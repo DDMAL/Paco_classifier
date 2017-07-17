@@ -1,5 +1,10 @@
-__version__ = "1.0.0-alpha"
+import rodan
+__version__ = rodan.__version__
+
+import logging
+logger = logging.getLogger('rodan')
 
 from rodan.jobs import module_loader
 
-module_loader('rodan.jobs.Abbyy-Rodan.abbyy_ocr')
+module_loader('rodan.jobs.Calvo.calvo_classifier')
+

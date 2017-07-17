@@ -1,3 +1,12 @@
 - mimetype: image/rgb+png
   description: PNG image file
-  extension: png  
+  extension: png
+- mimetype: image/rgb+jpg
+  description: JPG image file
+  extension: jpg
+- mimetype: image/rgba+png
+  description: PNG image file with alpha channel
+  extension: png
+- mimetype: keras/model+hdf5
+  description: Trained network from Keras framework
+  extension: hdf5
