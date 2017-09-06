@@ -15,3 +15,18 @@ Python dependencies:
   * six (1.10.0)
   * Theano (0.9.0)
 
+# Keras configuration
+
+Calvo's classifier needs *Keras* and *Theano* to be installed. It can be easily done through **pip**. 
+
+*Keras* works over both Theano and Tensorflow, so after the installation check **~/.keras/keras.json** so that it looks like:
+
+~~~
+{
+    "image_dim_ordering": "th", 
+    "epsilon": 1e-07, 
+    "floatx": "float32", 
+    "backend": "theano"
+}
+~~~
+
