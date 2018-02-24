@@ -18,8 +18,8 @@ def process_image(image, model_path, vspan, hspan):
     output = np.zeros( (height, width), 'uint8')
     
     for row in range(vspan,height-vspan-1):
+        print str(row) + ' / ' + str(height - vspan - 1)
         for col in range(hspan,width-hspan-1):
-            
             sample = image[row-vspan:row+vspan+1,col-hspan:col+hspan+1]
             
             if image_data_format() == 'channels_first':

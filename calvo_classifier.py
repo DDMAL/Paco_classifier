@@ -28,12 +28,12 @@ class CalvoClassifier(RodanTask):
             'Vertical span': {
                 'type': 'integer',
                 'minimum': 1,
-                'default': 20
+                'default': 25
             },
             'Horizontal span': {
                 'type': 'integer',
                 'minimum': 1,
-                'default': 20
+                'default': 25
             }
         }
     }
@@ -43,6 +43,7 @@ class CalvoClassifier(RodanTask):
         {'name': 'Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5'] },
     )
     output_port_types = (
+        {'name': 'Background', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'Music symbol', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'Staff lines', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'Text', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']}
@@ -69,7 +70,7 @@ class CalvoClassifier(RodanTask):
         analysis = recognition.process_image(image,model_filepath,vspan,hspan)        
         
         # Let user define the number of labels?
-        for label in range(1,4):
+        for label in range(0,4):
             lower_range = np.array(label, dtype=np.uint8)
             upper_range = np.array(label, dtype=np.uint8)
             mask = cv2.inRange(analysis, lower_range, upper_range)
@@ -83,7 +84,9 @@ class CalvoClassifier(RodanTask):
             b_channel, g_channel, r_channel = cv2.split(original_masked)
             original_masked_alpha = cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
             
-            if label == 1:
+            if label == 0:
+                port = 'Background'
+            elif label == 1:
                 port = 'Music symbol'
             elif label == 2:
                 port = 'Staff lines'
