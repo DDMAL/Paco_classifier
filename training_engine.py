@@ -14,10 +14,7 @@ from keras.layers.normalization import BatchNormalization
 # ===========================
 
 VALIDATION_SPLIT=0.2
-EPOCHS = 50
-SAMPLES = 200
 BATCH_SIZE = 16
-MAX_SAMPLES_PER_CLASS = 500 # BAD BUT FAST
 
 # ===========================
 
@@ -83,7 +80,7 @@ def getTrain(input_image, gt, hspan, vspan, num_labels, max_samples_per_class):
 
                     label = page_y[row][col]
 
-                    if label >= 0 and label < num_labels: # Avoid possible noise in the GT or -1 (unknown pixel)
+                    if 0 <= label < num_labels: # Avoid possible noise in the GT or -1 (unknown pixel)
 
                         if rd.random() < ratio[label]: # Take samples according to its
 
@@ -111,14 +108,14 @@ def getTrain(input_image, gt, hspan, vspan, num_labels, max_samples_per_class):
     return [X_train, Y_train]
 
 
-def train_model(input_image, gt, hspan, vspan, output_model_path, num_labels = 4):
+def train_model(input_image, gt, hspan, vspan, output_model_path, max_samples_per_class, epochs, num_labels = 4):
     # -------------------------------------------------------------------------------------------------------------------
 
     # Create training set
     [X_train, Y_train] = getTrain([input_image], [gt],
                                   hspan, vspan,
                                   num_labels,
-                                  max_samples_per_class=MAX_SAMPLES_PER_CLASS)
+                                  max_samples_per_class=max_samples_per_class)
 
     print 'Training created with ' + str(len(X_train)) + ' samples.'
 
@@ -147,7 +144,7 @@ def train_model(input_image, gt, hspan, vspan, output_model_path, num_labels = 4
               batch_size=BATCH_SIZE,
               validation_split=VALIDATION_SPLIT,
               callbacks=callbacks_list,
-              epochs=EPOCHS)
+              epochs=epochs)
 
     return 0
 

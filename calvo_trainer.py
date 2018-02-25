@@ -22,9 +22,19 @@ class CalvoTrainer(RodanTask):
     interactive = False
 
     settings = {
-        'title': 'Feature window',
+        'title': 'Training parameters',
         'type': 'object',
         'properties': {
+            'Maximum number of samples per class': {
+                'type': 'integer',
+                'minimum': 1,
+                'default': 50
+            },
+            'Maximum number of training epochs': {
+                'type': 'integer',
+                'minimum': 1,
+                'default': 5
+            },
             'Vertical span': {
                 'type': 'integer',
                 'minimum': 1,
@@ -73,6 +83,8 @@ class CalvoTrainer(RodanTask):
         # Settings
         vspan = settings['Vertical span']
         hspan = settings['Horizontal span']
+        max_samples_per_class = settings['Maximum number of samples per class']
+        max_number_of_epochs = settings['Maximum number of training epochs']
 
         # Create categorical ground-truth
         background_mask = (background[:, :, 3] == 255)
@@ -98,7 +110,11 @@ class CalvoTrainer(RodanTask):
 
         output_model_path = outputs['Model'][0]['resource_path']
 
-        status = training.train_model(input_image,gt,hspan,vspan,output_model_path + '.hdf5')
+        status = training.train_model(input_image,gt,
+                                      hspan,vspan,
+                                      output_model_path=output_model_path + '.hdf5',
+                                      max_samples_per_class=max_samples_per_class,
+                                      epochs=max_number_of_epochs)
 
         print ('Finishing the job')
         os.rename(output_model_path + '.hdf5', output_model_path)
