@@ -1,5 +1,5 @@
 - mimetype: image/rgb+png
-  description: PNG image file
+  description: RGB PNG image
   extension: png
 - mimetype: image/rgb+jpg
   description: JPG image file
