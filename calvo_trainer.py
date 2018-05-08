@@ -50,10 +50,10 @@ class CalvoTrainer(RodanTask):
 
     input_port_types = (
         {'name': 'Image', 'minimum': 1, 'maximum': 1, 'resource_types': lambda mime: mime.startswith('image/')},
-        {'name': 'Background layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'Music symbol layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'Staff lines layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'Text', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']}
+        {'name': 'rgba+PNG: Background layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba+PNG: Music symbol layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba+PNG: Staff lines layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba+PNG: Text', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']}
     )
 
     output_port_types = (
