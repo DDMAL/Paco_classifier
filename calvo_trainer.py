@@ -75,10 +75,10 @@ class CalvoTrainer(RodanTask):
     def run_my_task(self, inputs, settings, outputs):
         # Ports
         input_image = cv2.imread(inputs['Image'][0]['resource_path'], True) # 3-channel
-        background = cv2.imread(inputs['Background layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-        notes = cv2.imread(inputs['Music symbol layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-        lines = cv2.imread(inputs['Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-        text = cv2.imread(inputs['Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+        background = cv2.imread(inputs['rgba PNG - Background layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+        notes = cv2.imread(inputs['rgba PNG - Music symbol layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+        lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+        text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
 
         # Settings
         vspan = settings['Vertical span']
