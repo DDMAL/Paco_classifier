@@ -13,7 +13,7 @@ Python dependencies:
   * scipy (0.19.1)
   * setuptools (36.0.1)
   * six (1.10.0)
-  * Theano (0.9.0)
+  * Theano (1.0.2)
   * opencv-python (3.2.0.7)
 
 # Keras configuration
