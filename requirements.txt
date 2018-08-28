@@ -1,7 +1,7 @@
 h5py==2.7.0
 html5lib==0.9999999
 Keras==2.0.6
-numpy==1.13.1
+numpy==1.15.1
 opencv-python==3.2.0.8
 PyYAML==3.12
 scipy==0.19.1

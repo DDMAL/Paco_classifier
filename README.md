@@ -9,7 +9,7 @@ Python dependencies:
   * h5py (2.7.0)
   * html5lib (0.9999999)
   * Keras (2.0.5)
-  * numpy (1.13.1)
+  * numpy (1.15.1)
   * scipy (0.19.1)
   * setuptools (36.0.1)
   * six (1.10.0)
