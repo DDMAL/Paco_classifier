@@ -53,7 +53,8 @@ class CalvoTrainer(RodanTask):
         {'name': 'rgba PNG - Background layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Music symbol layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Staff lines layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Text', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']}
+        {'name': 'rgba PNG - Text', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']}
     )
 
     output_port_types = (
@@ -79,6 +80,7 @@ class CalvoTrainer(RodanTask):
         notes = cv2.imread(inputs['rgba PNG - Music symbol layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
         lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
         text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+        regions = cv2.imread(inputs['rgba PNG - Selected regions'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
 
         # Settings
         vspan = settings['Vertical span']
@@ -87,13 +89,20 @@ class CalvoTrainer(RodanTask):
         max_number_of_epochs = settings['Maximum number of training epochs']
 
         # Create categorical ground-truth
-        background_mask = (background[:, :, 3] == 255)
+        regions_mask = (regions[:, :, 3] == 255)
+
         notes_mask = (notes[:, :, 3] == 255)
+        notes_mask = np.logical_and(notes_mask, regions_mask) # restrict layer to only the notes in the selected regions
+
         lines_mask = (lines[:, :, 3] == 255)
+        lines_mask = np.logical_and(lines_mask, regions_mask) # restrict layer to only the staff lines in the selected regions
+
         text_mask = (text[:, :, 3] == 255)
+        text_mask = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
+
+        background_mask = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
         gt = np.ones((background.shape[0],background.shape[1]), 'uint8')*-1
-
         gt += (background_mask*1 + notes_mask*2 + lines_mask*3 + text_mask*4) # -> -1 or 0,1,2,3
         '''
         labeled = background_mask + notes_mask + lines_mask + text_mask
