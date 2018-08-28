@@ -6,4 +6,4 @@ opencv-python==3.2.0.8
 PyYAML==3.12
 scipy==0.19.1
 six==1.10.0
-Theano==1.0.2
+tensorflow==1.5

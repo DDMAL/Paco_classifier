@@ -13,7 +13,7 @@ Python dependencies:
   * scipy (0.19.1)
   * setuptools (36.0.1)
   * six (1.10.0)
-  * Theano (1.0.2)
+  * Tensorflow (1.5)
   * opencv-python (3.2.0.7)
 
 # Keras configuration
@@ -24,10 +24,10 @@ Calvo's classifier needs *Keras* and *Theano* to be installed. It can be easily 
 
 ~~~
 {
-    "image_dim_ordering": "th", 
-    "epsilon": 1e-07, 
-    "floatx": "float32", 
-    "backend": "theano"
+    "image_dim_ordering": "tf",
+    "epsilon": 1e-07,
+    "floatx": "float32",
+    "backend": "tensorflow"
 }
 ~~~
 
