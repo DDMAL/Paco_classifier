@@ -18,7 +18,7 @@ Python dependencies:
 
 # Keras configuration
 
-Calvo's classifier needs *Keras* and *Theano* to be installed. It can be easily done through **pip**. 
+Calvo's classifier needs *Keras* and *TensorFlow* to be installed. It can be easily done through **pip**. 
 
 *Keras* works over both Theano and Tensorflow, so after the installation check **~/.keras/keras.json** so that it looks like:
 
