@@ -116,8 +116,6 @@ def train_msae(input_image, gt, height, width, output_path, epochs):
 
         Y_train_label = np.expand_dims(np.asarray(Y_train[label]),axis=-1)
 
-        print(X_train.shape)
-        print(Y_train_label.shape)
         # Training stage
         model.fit(X_train, Y_train_label,
                   verbose=2,
