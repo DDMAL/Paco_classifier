@@ -62,7 +62,7 @@ def process_image_msae(image, model_paths, w_height, w_width, mode = 'masks'):
         for col in range(0, img_width - w_width - 1, w_width):
             sample = image[row:row+w_height,col:col+w_width]
 
-            # Pre-process TODO: Check all the pipelines to do the same
+            # Pre-process (check that training does the same!)
             sample = (255. - sample) / 255.
 
             if image_data_format() == 'channels_first':

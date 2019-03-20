@@ -1,3 +1,5 @@
+from __future__ import division
+
 import cv2
 import numpy as np
 import random as rd
@@ -7,6 +9,7 @@ from keras.layers import Conv2D, MaxPooling2D, Input
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping,ModelCheckpoint
 from keras.backend import image_data_format
+
 
 # ===========================
 #       SETTINGS
@@ -78,7 +81,7 @@ def getTrain(input_image, gt, patch_height, patch_width):
         for w in range(0, input_image.shape[1] - patch_width, wstride):
             x_sample = input_image[h:h + patch_height, w:w + patch_width]
 
-            # Pre-process TODO: Check all the pipelines to do the same
+            # Pre-process (check that prediction does the same!)
             x_sample = (255. - x_sample) / 255.
 
             X_train.append(x_sample)

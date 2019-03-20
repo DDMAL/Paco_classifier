@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
 # Program Name:         calvo_trainer.py
-# Program Description:  Rodan wrapper for Calvo's classifier training
+# Program Description:  Rodan wrapper for Fast Calvo's classifier training
 # -----------------------------------------------------------------------------
 
 import cv2
@@ -44,7 +44,7 @@ class FastCalvoTrainer(RodanTask):
     }
 
     input_port_types = (
-        {'name': 'Image', 'minimum': 1, 'maximum': 1, 'resource_types': lambda mime: mime.startswith('image/')},
+        {'name': 'Image', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgb+png','image/rgb+jpg']},
         {'name': 'rgba PNG - Background layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Music symbol layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Staff lines layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
@@ -102,8 +102,8 @@ class FastCalvoTrainer(RodanTask):
                                       output_path=output_models_path,
                                       epochs=max_number_of_epochs)
 
-        print ('Finishing the job')
         for output_model in output_model_patch:
             os.rename(output_models_path[output_model] + '.hdf5', output_models_path[output_model])
 
+        print ('Finishing the Fast CM trainer job.')
         return True
