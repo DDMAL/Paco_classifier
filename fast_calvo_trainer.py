@@ -80,7 +80,7 @@ class FastCalvoTrainer(RodanTask):
         gt['staff'] = np.logical_and(lines_mask, regions_mask) # restrict layer to only the staff lines in the selected regions
 
         text_mask = (text[:, :, 3] == 255)
-        gt['text'] np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
+        gt['text'] = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
 
         gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
