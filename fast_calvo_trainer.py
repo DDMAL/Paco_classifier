@@ -105,5 +105,5 @@ class FastCalvoTrainer(RodanTask):
         for output_model in output_model_patch:
             os.rename(output_models_path[output_model] + '.hdf5', output_models_path[output_model])
 
-        print ('Finishing the Fast CM trainer job.')
+        print('Finishing the Fast CM trainer job.')
         return True

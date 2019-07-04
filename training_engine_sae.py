@@ -100,11 +100,11 @@ def train_msae(input_image, gt, height, width, output_path, epochs):
 
     X_train = np.asarray(X_train)
 
-    print 'Training created with ' + str(len(X_train)) + ' samples.'
+    print('Training created with ' + str(len(X_train)) + ' samples.')
     for label in Y_train:
 
         # Training configuration
-        print 'Training a new model for ' + str(label)
+        print('Training a new model for ' + str(label))
         model = get_sae(
             height=height,
             width=width

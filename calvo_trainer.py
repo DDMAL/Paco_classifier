@@ -125,7 +125,7 @@ class CalvoTrainer(RodanTask):
                                       max_samples_per_class=max_samples_per_class,
                                       epochs=max_number_of_epochs)
 
-        print ('Finishing the job')
+        print('Finishing the job')
         os.rename(output_model_path + '.hdf5', output_model_path)
 
         return True

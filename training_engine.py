@@ -103,7 +103,7 @@ def getTrain(input_image, gt, hspan, vspan, num_labels, max_samples_per_class):
 
     Y_train = np.asarray(Y_train).reshape(len(Y_train), num_labels)
 
-    print ('Distribution of data per class: ' + str(count_per_class))
+    print('Distribution of data per class: ' + str(count_per_class))
 
     return [X_train, Y_train]
 
@@ -117,10 +117,10 @@ def train_model(input_image, gt, hspan, vspan, output_model_path, max_samples_pe
                                   num_labels,
                                   max_samples_per_class=max_samples_per_class)
 
-    print 'Training created with ' + str(len(X_train)) + ' samples.'
+    print('Training created with ' + str(len(X_train)) + ' samples.')
 
     # Training configuration
-    print 'Training a new model'
+    print('Training a new model')
     model = get_convnet(
         height=hspan * 2 + 1,
         width=vspan * 2 + 1,
