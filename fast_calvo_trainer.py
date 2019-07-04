@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 from rodan.jobs.base import RodanTask
-import training_engine_sae as training
+from . import training_engine_sae as training
 
 """Wrap Patchwise (Fast) Calvo classifier training in Rodan."""
 

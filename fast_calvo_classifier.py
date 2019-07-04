@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 from rodan.jobs.base import RodanTask
-import recognition_engine as recognition
+from . import recognition_engine as recognition
 
 
 """Wrap Fast Calvo classifier in Rodan."""
