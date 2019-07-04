@@ -41,7 +41,8 @@ class FastCalvoClassifier(RodanTask):
                 'maximum': 100,
                 'default': 50
             }
-        }
+        },
+        'job_queue': 'Python3'
     }
     
     input_port_types = (
