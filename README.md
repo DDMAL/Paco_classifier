@@ -2,9 +2,18 @@
 
 Repository of the Rodan wrapper for Calvo classifier
 
-# Dependencies
+# Rodan Jobs definition
+This repository includes the following Rodan Jobs:
+- `Pixelwise Analysis of Music Document` in **calvo_classifier.py**
+- `Training model for Pixelwise Analysis of Music Document` in **calvo_trainer.py**
+- `Fast Pixelwise Analysis of Music Document` in **fast_calvo_classifier.py**
+  - Available in the **python3** Rodan queue.
+- `Training model for Patchwise Analysis of Music Document` in **fast_calvo_trainer.py**
+  - Available in the **python3** Rodan queue.
 
-Python dependencies:
+# Installation Dependencies
+
+## Python dependencies:
 
   * h5py (2.7.0)
   * html5lib (0.9999999)
@@ -16,7 +25,7 @@ Python dependencies:
   * Tensorflow (1.5)
   * opencv-python (3.2.0.7)
 
-# Keras configuration
+## Keras configuration
 
 Calvo's classifier needs *Keras* and *TensorFlow* to be installed. It can be easily done through **pip**. 
 
