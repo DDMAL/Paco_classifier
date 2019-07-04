@@ -40,7 +40,8 @@ class FastCalvoTrainer(RodanTask):
                 'minimum': 64,
                 'default': 256
             }
-        }
+        },
+        'job_queue': 'Python3'
     }
 
     input_port_types = (
