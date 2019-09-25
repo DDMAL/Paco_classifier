@@ -113,8 +113,8 @@ def train_msae(input_image, gt, height, width, output_path, epochs):
         model.summary()
 
         callbacks_list = [
-                ModelCheckpoint(output_path[label], save_best_only=True, monitor='val_acc', verbose=1, mode='max'),
-                EarlyStopping(monitor='val_acc', patience=3, verbose=0, mode='max')
+                ModelCheckpoint(output_path[label], save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
+                EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
                 ]
 
         Y_train_label = np.expand_dims(np.asarray(Y_train[label]),axis=-1)
