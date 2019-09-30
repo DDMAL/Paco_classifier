@@ -91,9 +91,9 @@ class FastCalvoTrainer(RodanTask):
         max_number_of_epochs = settings['Maximum number of training epochs']
 
         output_models_path = { 'background': outputs['Background Model'][0]['resource_path'],
-                        'text': outputs['Music Symbol Model'][0]['resource_path'],
+                        'symbols': outputs['Music Symbol Model'][0]['resource_path'],
                         'staff': outputs['Staff Lines Model'][0]['resource_path'],
-                        'symbols': outputs['Text Model'][0]['resource_path']
+                        'text': outputs['Text Model'][0]['resource_path']
                         }
 
         # Call in training function
