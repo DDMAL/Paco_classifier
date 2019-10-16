@@ -1,5 +1,5 @@
 import rodan
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 import logging
 logger = logging.getLogger('rodan')
@@ -10,4 +10,3 @@ module_loader('rodan.jobs.Calvo-classifier.calvo_classifier')
 module_loader('rodan.jobs.Calvo-classifier.calvo_trainer')
 module_loader('rodan.jobs.Calvo-classifier.fast_calvo_classifier')
 module_loader('rodan.jobs.Calvo-classifier.fast_calvo_trainer')
-

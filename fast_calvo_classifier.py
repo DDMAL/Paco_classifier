@@ -24,6 +24,7 @@ class FastCalvoClassifier(RodanTask):
     settings = {
         'title': 'Parameters',
         'type': 'object',
+        'job_queue': 'Python3',
         'properties': {
             'Height': {
                 'type': 'integer',
@@ -42,7 +43,6 @@ class FastCalvoClassifier(RodanTask):
                 'default': 50
             }
         },
-        'job_queue': 'Python3'
     }
 
     input_port_types = (
@@ -79,21 +79,21 @@ class FastCalvoClassifier(RodanTask):
         width = settings['Width']
         threshold = settings['Threshold']
 
-        for idx in range(len(inputs['Image'])):
-            image_filepath = inputs['Image'][idx]['resource_path']
+        for idx, _ in enumerate(inputs['Image']):
             # Process
-            image = cv2.imread(image_filepath,True)
+            image_filepath = inputs['Image'][idx]['resource_path']
+            image = cv2.imread(image_filepath, True)
 
             analyses = recognition.process_image_msae(image, model_paths, height, width, mode = mode)
 
-            for id_label, model in enumerate(model_paths):
+            for id_label, _ in enumerate(model_paths):
                 if mode == 'masks':
                     mask = ((analyses[id_label] > (threshold / 100.0)) * 255).astype('uint8')
                 elif mode == 'logical':
                     label_range = np.array(id_label, dtype=np.uint8)
                     mask = cv2.inRange(analyses, label_range, label_range)
-
-                original_masked = cv2.bitwise_and(image,image,mask = mask)
+ 
+                original_masked = cv2.bitwise_and(image, image, mask = mask)
                 original_masked[mask == 0] = (255, 255, 255)
 
                 # Alpha = 0 when background
@@ -112,7 +112,7 @@ class FastCalvoClassifier(RodanTask):
                     port = 'Text'
 
                 if port in outputs:
-                    cv2.imwrite(outputs[port][idx]['resource_path']+'.png',original_masked_alpha)
-                    os.rename(outputs[port][idx]['resource_path']+'.png',outputs[port][idx]['resource_path'])
+                    cv2.imwrite(outputs[port][idx]['resource_path']+'.png', original_masked_alpha)
+                    os.rename(outputs[port][idx]['resource_path']+'.png', outputs[port][idx]['resource_path'])
 
         return True
