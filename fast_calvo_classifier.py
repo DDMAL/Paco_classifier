@@ -24,7 +24,7 @@ class FastCalvoClassifier(RodanTask):
     settings = {
         'title': 'Parameters',
         'type': 'object',
-        'job_queue': 'Python3',
+        'job_queue': 'GPU',
         'properties': {
             'Height': {
                 'type': 'integer',
