@@ -23,6 +23,7 @@ class CalvoTrainer(RodanTask):
 
     settings = {
         'title': 'Training parameters',
+        'job_queue': 'GPU',
         'type': 'object',
         'properties': {
             'Maximum number of samples per class': {

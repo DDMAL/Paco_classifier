@@ -23,6 +23,7 @@ class CalvoClassifier(RodanTask):
     
     settings = {
         'title': 'Feature window',
+        'job_queue': 'GPU',
         'type': 'object',
         'properties': {
             'Vertical span': {
