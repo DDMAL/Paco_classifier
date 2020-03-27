@@ -103,8 +103,5 @@ class FastCalvoTrainer(RodanTask):
                                       output_path=output_models_path,
                                       epochs=max_number_of_epochs)
 
-        for output_model in output_model_patch:
-            os.rename(output_models_path[output_model] + '.hdf5', output_models_path[output_model])
-
         print('Finishing the Fast CM trainer job.')
         return True
