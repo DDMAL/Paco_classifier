@@ -4,6 +4,7 @@
 #-----------------------------------------------------------------------------
 
 import cv2
+import logging
 import numpy as np
 import os
 
@@ -56,7 +57,8 @@ class FastCalvoClassifier(RodanTask):
         {'name': 'Background', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
         {'name': 'Music symbol', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
         {'name': 'Staff lines', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
-        {'name': 'Text', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']}
+        {'name': 'Text', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
+        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']},
     )
 
     """
@@ -73,6 +75,15 @@ class FastCalvoClassifier(RodanTask):
         text_model = inputs['Text model'][0]['resource_path']
 
         model_paths = [background_model, symbol_model, staff_model, text_model]
+
+        # Set up log file if applicable
+        logging.getLogger().addHadler(
+                logging.StreamHandler()
+        )
+        if len(outputs['Log File']) > 0:
+            logging.getLogger().addHandler(
+                    logging.FileHandler(outputs['Log File'][0]['resource_path'])
+            )
 
         # Settings        
         height = settings['Height']

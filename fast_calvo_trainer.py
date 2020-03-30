@@ -4,6 +4,7 @@
 # -----------------------------------------------------------------------------
 
 import cv2
+import logging
 import numpy as np
 import os
 
@@ -41,7 +42,7 @@ class FastCalvoTrainer(RodanTask):
                 'default': 256
             }
         },
-        'job_queue': 'GPU'
+        'job_queue': 'Python3'
     }
 
     input_port_types = (
@@ -58,6 +59,7 @@ class FastCalvoTrainer(RodanTask):
         {'name': 'Music Symbol Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Staff Lines Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Text Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']}
     )
 
 
@@ -69,6 +71,15 @@ class FastCalvoTrainer(RodanTask):
         lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
         text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
         regions = cv2.imread(inputs['rgba PNG - Selected regions'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+
+        # Set up log file if applicable
+        logging.getLogger().addHandler(
+                logging.StreamHandler()
+        )
+        if len(outputs['Log File']) > 0:
+            logging.getLogger().addHandler(
+                    logging.FileHandler(outputs['Log File'][0]['resource_path'])
+            )
 
         # Create categorical ground-truth
         gt = {}

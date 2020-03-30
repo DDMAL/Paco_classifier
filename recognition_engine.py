@@ -2,6 +2,7 @@ from __future__ import division
 
 import keras
 import cv2
+import logging
 import numpy as np
 
 from keras.models import load_model
@@ -20,7 +21,7 @@ def process_image(image, model_path, vspan, hspan):
     output = np.zeros( (height, width), 'uint8')
     
     for row in range(vspan,height-vspan-1):
-        print(str(row) + ' / ' + str(height - vspan - 1))
+        logging.info(str(row) + ' / ' + str(height - vspan - 1))
         for col in range(hspan,width-hspan-1):
             sample = image[row-vspan:row+vspan+1,col-hspan:col+hspan+1]
             
@@ -60,7 +61,7 @@ def process_image_msae(image, model_paths, w_height, w_width, mode = 'masks'):
         output_image = np.zeros( (img_height, img_width), 'uint8')        
     
     for row in range(0,img_height - w_height - 1, w_height): 
-        print(str(row) + ' / ' + str(img_height))
+        logging.info(str(row) + ' / ' + str(img_height))
         for col in range(0, img_width - w_width - 1, w_width):
             sample = image[row:row+w_height,col:col+w_width]
 
