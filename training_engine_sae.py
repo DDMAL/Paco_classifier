@@ -1,7 +1,6 @@
 from __future__ import division
 
 import cv2
-import logging
 import numpy as np
 import random as rd
 from keras.models import Model
@@ -101,11 +100,11 @@ def train_msae(input_image, gt, height, width, output_path, epochs):
 
     X_train = np.asarray(X_train)
 
-    logging.info('Training created with ' + str(len(X_train)) + ' samples.')
+    print('Training created with ' + str(len(X_train)) + ' samples.')
     for label in Y_train:
 
         # Training configuration
-        logging.info('Training a new model for ' + str(label))
+        print('Training a new model for ' + str(label))
         model = get_sae(
             height=height,
             width=width
