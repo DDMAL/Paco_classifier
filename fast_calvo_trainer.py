@@ -47,7 +47,7 @@ class FastCalvoTrainer(RodanTask):
                 'default': 256
             }
         },
-        'job_queue': 'Python3'
+        'job_queue': 'GPU'
     }
 
     input_port_types = (
