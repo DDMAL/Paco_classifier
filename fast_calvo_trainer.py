@@ -4,13 +4,19 @@
 # -----------------------------------------------------------------------------
 
 import cv2
+import logging
 import numpy as np
 import os
+import sys
 
+from rodan.celery import app
+from celery.utils.log import get_task_logger
 from rodan.jobs.base import RodanTask
 from . import training_engine_sae as training
 
 """Wrap Patchwise (Fast) Calvo classifier training in Rodan."""
+
+logger = get_task_logger(__name__)
 
 
 class FastCalvoTrainer(RodanTask):
@@ -58,50 +64,62 @@ class FastCalvoTrainer(RodanTask):
         {'name': 'Music Symbol Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Staff Lines Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Text Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']}
     )
 
 
     def run_my_task(self, inputs, settings, outputs):
-        # Ports
-        input_image = cv2.imread(inputs['Image'][0]['resource_path'], True) # 3-channel
-        background = cv2.imread(inputs['rgba PNG - Background layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-        notes = cv2.imread(inputs['rgba PNG - Music symbol layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-        lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-        text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-        regions = cv2.imread(inputs['rgba PNG - Selected regions'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+        oldouts = sys.stdout, sys.stderr
+        if len(outputs['Log File']) > 0:
+            logger.addHandler(
+                    logging.FileHandler(outputs['Log File'][0]['resource_path'])
+            )
+        try:
+            rlevel = app.conf.CELERY_REDIRECT_STDOUTS_LEVEL
+            app.log.redirect_stdouts_to_logger(logger, rlevel)
 
-        # Create categorical ground-truth
-        gt = {}
-        regions_mask = (regions[:, :, 3] == 255)
+            # Ports
+            input_image = cv2.imread(inputs['Image'][0]['resource_path'], True) # 3-channel
+            background = cv2.imread(inputs['rgba PNG - Background layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+            notes = cv2.imread(inputs['rgba PNG - Music symbol layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+            lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+            text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+            regions = cv2.imread(inputs['rgba PNG - Selected regions'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
 
-        notes_mask = (notes[:, :, 3] == 255)
-        gt['symbols'] = np.logical_and(notes_mask, regions_mask) # restrict layer to only the notes in the selected regions
+            # Create categorical ground-truth
+            gt = {}
+            regions_mask = (regions[:, :, 3] == 255)
 
-        lines_mask = (lines[:, :, 3] == 255)
-        gt['staff'] = np.logical_and(lines_mask, regions_mask) # restrict layer to only the staff lines in the selected regions
+            notes_mask = (notes[:, :, 3] == 255)
+            gt['symbols'] = np.logical_and(notes_mask, regions_mask) # restrict layer to only the notes in the selected regions
 
-        text_mask = (text[:, :, 3] == 255)
-        gt['text'] = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
+            lines_mask = (lines[:, :, 3] == 255)
+            gt['staff'] = np.logical_and(lines_mask, regions_mask) # restrict layer to only the staff lines in the selected regions
 
-        gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
+            text_mask = (text[:, :, 3] == 255)
+            gt['text'] = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
 
-        # Settings
-        patch_height = settings['Patch height']
-        patch_width = settings['Patch width']
-        max_number_of_epochs = settings['Maximum number of training epochs']
+            gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
-        output_models_path = { 'background': outputs['Background Model'][0]['resource_path'],
-                        'symbols': outputs['Music Symbol Model'][0]['resource_path'],
-                        'staff': outputs['Staff Lines Model'][0]['resource_path'],
-                        'text': outputs['Text Model'][0]['resource_path']
-                        }
+            # Settings
+            patch_height = settings['Patch height']
+            patch_width = settings['Patch width']
+            max_number_of_epochs = settings['Maximum number of training epochs']
 
-        # Call in training function
-        status = training.train_msae(input_image,gt,
-                                      height=patch_height,
-                                      width=patch_width,
-                                      output_path=output_models_path,
-                                      epochs=max_number_of_epochs)
+            output_models_path = { 'background': outputs['Background Model'][0]['resource_path'],
+                            'symbols': outputs['Music Symbol Model'][0]['resource_path'],
+                            'staff': outputs['Staff Lines Model'][0]['resource_path'],
+                            'text': outputs['Text Model'][0]['resource_path']
+                            }
 
-        print('Finishing the Fast CM trainer job.')
-        return True
+            # Call in training function
+            status = training.train_msae(input_image,gt,
+                                          height=patch_height,
+                                          width=patch_width,
+                                          output_path=output_models_path,
+                                          epochs=max_number_of_epochs)
+
+            print('Finishing the Fast CM trainer job.')
+            return True
+        finally:
+            sys.stdout, sys.stderr = oldouts
