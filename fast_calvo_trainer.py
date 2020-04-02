@@ -123,3 +123,6 @@ class FastCalvoTrainer(RodanTask):
             return True
         finally:
             sys.stdout, sys.stderr = oldouts
+
+    def my_error_information(self, exc, traceback):
+        pass
