@@ -71,9 +71,11 @@ class FastCalvoTrainer(RodanTask):
     def run_my_task(self, inputs, settings, outputs):
         oldouts = sys.stdout, sys.stderr
         if len(outputs['Log File']) > 0:
-            logger.addHandler(
-                    logging.FileHandler(outputs['Log File'][0]['resource_path'])
+            handler = logging.FileHandler(outputs['Log File'][0]['resource_path'])
+            handler.setFormatter(
+                    logging.Formatter('%(asctime)s - %(name)s - %(message)s')
             )
+            logger.addHandler(handler)
         try:
             rlevel = app.conf.CELERY_REDIRECT_STDOUTS_LEVEL
             app.log.redirect_stdouts_to_logger(logger, rlevel)
