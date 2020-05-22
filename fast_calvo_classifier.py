@@ -72,7 +72,7 @@ class FastCalvoClassifier(RodanTask):
     """
     def run_my_task(self, inputs, settings, outputs):
         oldouts = sys.stdout, sys.stderr
-        if len(outputs['Log File']) > 0:
+        if 'Log File' in outputs and len(outputs['Log File']) > 0:
             handler = logging.FileHandler(outputs['Log File'][0]['resource_path'])
             handler.setFormatter(
                     logging.Formatter('%(asctime)s - %(name)s - %(message)s')
