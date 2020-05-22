@@ -65,45 +65,79 @@ def get_sae(height, width, pretrained_weights = None):
     return model
 
 
-def getTrain(input_image, gt, patch_height, patch_width):
-    X_train = []
+def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
+    # Speed-up factor (TODO this should be a parameter of the job)
+    factor = 100. 
+
+    X_train = {}
     Y_train = {}
 
-    # Initialize GT lists
-    for key in gt:
-        Y_train[key] = []
+    # Initialize data lists
+    for label in gt:
+        X_train[label] = []
+        Y_train[label] = []
 
-    hstride = patch_height // 2
-    wstride = patch_width // 2
+    # Calculate the ratio per label
+    count = {}
+    for label in gt:
+        count[label] = (gt[label] == 1).sum()
 
-    # TODO Take into account margins
-    for h in range(0, input_image.shape[0] - patch_height, hstride):
-        for w in range(0, input_image.shape[1] - patch_width, wstride):
-            x_sample = input_image[h:h + patch_height, w:w + patch_width]
+    samples_per_class = max_samples_per_class
+    for label in gt:
+        samples_per_class = min(count[label], samples_per_class)
+    
+    ratio = {}
+    for label in gt:
+        ratio[label] = factor * (samples_per_class/float(count[label]))
 
-            # Pre-process (check that prediction does the same!)
-            x_sample = (255. - x_sample) / 255.
+    # Get samples according to the ratio per label
+    height, width, _ = input_image.shape
+    for row in range(patch_height,height-patch_height-1):
+        for col in range(patch_width,width-patch_width-1):
 
-            X_train.append(x_sample)
+            if rd.random() < 1./factor:
 
-            for label in gt:
-                Y_train[label].append(gt[label][h:h + patch_height, w:w + patch_width])
+                for label in gt:
+                    if gt[label][row][col] == 1:       
+                        if rd.random() < ratio[label]: # Take samples according to its ratio
+                            from_x = row-(patch_height//2)
+                            from_y = col-(patch_width//2)
 
-    return X_train, Y_train
+                            sample_x = input_image[from_x:from_x+patch_height,from_y:from_y+patch_width]
+                            
+                            # Pre-process (check that prediction does the same!)
+                            sample_x = (255. - sample_x) / 255.
+
+                            sample_y = gt[label][from_x:from_x+patch_height,from_y:from_y+patch_width]
+
+                            X_train[label].append(sample_x)
+                            Y_train[label].append(sample_y)
 
 
-def train_msae(input_image, gt, height, width, output_path, epochs):
+    # Manage different ordering 
+    for label in gt:
+        Y_train[label] = np.expand_dims(np.asarray(Y_train[label]),axis=-1)
+        if image_data_format() == 'channels_first':
+            X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), 3, patch_height, patch_width)
+        else:
+            X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), patch_height, patch_width, 3)
+    
 
-    # Crop the image and create ground_truth
-    [X_train, Y_train] = getTrain(input_image, gt,
-                                  height, width)
+    return [X_train, Y_train]
 
-    X_train = np.asarray(X_train)
 
-    print('Training created with ' + str(len(X_train)) + ' samples.')
+
+def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_per_class):
+
+    # Create ground_truth
+    [X_train, Y_train] = getTrain(input_image, gt, height, width, max_samples_per_class)
+
+    print('Training created with:')
     for label in Y_train:
+        print("\t{} samples of {}".format(len(Y_train[label]),label))
 
-        # Training configuration
+    # Training loop
+    for label in Y_train:
         print('Training a new model for ' + str(label))
         model = get_sae(
             height=height,
@@ -117,10 +151,8 @@ def train_msae(input_image, gt, height, width, output_path, epochs):
                 EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
                 ]
 
-        Y_train_label = np.expand_dims(np.asarray(Y_train[label]),axis=-1)
-
         # Training stage
-        model.fit(X_train, Y_train_label,
+        model.fit(X_train[label], Y_train[label],
                   verbose=2,
                   batch_size=BATCH_SIZE,
                   validation_split=VALIDATION_SPLIT,
@@ -133,5 +165,3 @@ def train_msae(input_image, gt, height, width, output_path, epochs):
 # Debugging code
 if __name__ == "__main__":
     print('Must be run from Rodan')
-
-

@@ -34,8 +34,13 @@ class FastCalvoTrainer(RodanTask):
             'Maximum number of training epochs': {
                 'type': 'integer',
                 'minimum': 1,
-                'default': 10
+                'default': 15
             },
+            'Maximum number of samples per label': {
+                'type': 'integer',
+                'minimum': 100,
+                'default': 2000
+            },            
             'Patch height': {
                 'type': 'integer',
                 'minimum': 64,
@@ -70,7 +75,7 @@ class FastCalvoTrainer(RodanTask):
 
     def run_my_task(self, inputs, settings, outputs):
         oldouts = sys.stdout, sys.stderr
-        if 'Log File' in outputs and len(outputs['Log File']) > 0:
+        if len(outputs['Log File']) > 0:
             handler = logging.FileHandler(outputs['Log File'][0]['resource_path'])
             handler.setFormatter(
                     logging.Formatter('%(asctime)s - %(name)s - %(message)s')
@@ -107,6 +112,7 @@ class FastCalvoTrainer(RodanTask):
             patch_height = settings['Patch height']
             patch_width = settings['Patch width']
             max_number_of_epochs = settings['Maximum number of training epochs']
+            max_samples_per_class = settings['Maximum number of samples per label']
 
             output_models_path = { 'background': outputs['Background Model'][0]['resource_path'],
                             'symbols': outputs['Music Symbol Model'][0]['resource_path'],
@@ -119,7 +125,8 @@ class FastCalvoTrainer(RodanTask):
                                           height=patch_height,
                                           width=patch_width,
                                           output_path=output_models_path,
-                                          epochs=max_number_of_epochs)
+                                          epochs=max_number_of_epochs,
+                                          max_samples_per_class=max_samples_per_class)
 
             print('Finishing the Fast CM trainer job.')
             return True
