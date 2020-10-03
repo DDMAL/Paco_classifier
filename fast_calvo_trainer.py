@@ -59,17 +59,19 @@ class FastCalvoTrainer(RodanTask):
         {'name': 'Image', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgb+png','image/rgb+jpg']},
         {'name': 'rgba PNG - Background layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Music symbol layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Staff lines layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Text', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']}
+        {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        # Optional layers
+        {'name': 'rgba PNG - Staff Lines layer', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Text', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
     )
 
     output_port_types = (
         {'name': 'Background Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Music Symbol Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Staff Lines Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Text Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']}
+        {'name': 'Log File', 'minimum': 1, 'maximum': 1, 'resource_types': ['text/plain']},
+        # Optional layers
+        {'name': 'Staff Lines Model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Text Model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
     )
 
 
@@ -78,7 +80,7 @@ class FastCalvoTrainer(RodanTask):
         if len(outputs['Log File']) > 0:
             handler = logging.FileHandler(outputs['Log File'][0]['resource_path'])
             handler.setFormatter(
-                    logging.Formatter('%(asctime)s - %(name)s - %(message)s')
+                logging.Formatter('%(asctime)s - %(name)s - %(message)s')
             )
             logger.addHandler(handler)
         try:
@@ -89,23 +91,13 @@ class FastCalvoTrainer(RodanTask):
             input_image = cv2.imread(inputs['Image'][0]['resource_path'], True) # 3-channel
             background = cv2.imread(inputs['rgba PNG - Background layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
             notes = cv2.imread(inputs['rgba PNG - Music symbol layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-            lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-            text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
             regions = cv2.imread(inputs['rgba PNG - Selected regions'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
 
             # Create categorical ground-truth
             gt = {}
             regions_mask = (regions[:, :, 3] == 255)
-
             notes_mask = (notes[:, :, 3] == 255)
             gt['symbols'] = np.logical_and(notes_mask, regions_mask) # restrict layer to only the notes in the selected regions
-
-            lines_mask = (lines[:, :, 3] == 255)
-            gt['staff'] = np.logical_and(lines_mask, regions_mask) # restrict layer to only the staff lines in the selected regions
-
-            text_mask = (text[:, :, 3] == 255)
-            gt['text'] = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
-
             gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
             # Settings
@@ -114,19 +106,38 @@ class FastCalvoTrainer(RodanTask):
             max_number_of_epochs = settings['Maximum number of training epochs']
             max_samples_per_class = settings['Maximum number of samples per label']
 
-            output_models_path = { 'background': outputs['Background Model'][0]['resource_path'],
-                            'symbols': outputs['Music Symbol Model'][0]['resource_path'],
-                            'staff': outputs['Staff Lines Model'][0]['resource_path'],
-                            'text': outputs['Text Model'][0]['resource_path']
-                            }
+            output_models_path = {
+                'background': outputs['Background Model'][0]['resource_path'],
+                'symbols': outputs['Music Symbol Model'][0]['resource_path'],
+            }
+
+            # optional layers
+            for k, _ in inputs:
+                if k == 'rgba PNG - Staff lines layer': 
+                    lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+                    lines_mask = (lines[:, :, 3] == 255)
+                    gt['staff'] = np.logical_and(lines_mask, regions_mask) # restrict layer to only the staff lines in the selected regions
+                if k == 'rgba PNG - Text': 
+                    text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+                    text_mask = (text[:, :, 3] == 255)
+                    gt['text'] = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
+
+            for k, _ in outputs:
+                if k == 'staff':
+                    output_models_path['staff'] = outputs['Staff Lines Model'][0]['resource_path']
+                if k == 'text':
+                    output_models_path['text'] = outputs['Text Model'][0]['resource_path']
 
             # Call in training function
-            status = training.train_msae(input_image,gt,
-                                          height=patch_height,
-                                          width=patch_width,
-                                          output_path=output_models_path,
-                                          epochs=max_number_of_epochs,
-                                          max_samples_per_class=max_samples_per_class)
+            status = training.train_msae(
+                input_image=input_image,
+                gt=gt,
+                height=patch_height,
+                width=patch_width,
+                output_path=output_models_path,
+                epochs=max_number_of_epochs,
+                max_samples_per_class=max_samples_per_class
+            )
 
             print('Finishing the Fast CM trainer job.')
             return True
