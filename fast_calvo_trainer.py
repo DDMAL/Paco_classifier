@@ -112,7 +112,7 @@ class FastCalvoTrainer(RodanTask):
             }
 
             # optional layers
-            for k, _ in inputs:
+            for k in inputs:
                 if k == 'rgba PNG - Staff lines layer': 
                     lines = cv2.imread(inputs['rgba PNG - Staff lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
                     lines_mask = (lines[:, :, 3] == 255)
@@ -122,7 +122,7 @@ class FastCalvoTrainer(RodanTask):
                     text_mask = (text[:, :, 3] == 255)
                     gt['text'] = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
 
-            for k, _ in outputs:
+            for k in outputs:
                 if k == 'staff':
                     output_models_path['staff'] = outputs['Staff Lines Model'][0]['resource_path']
                 if k == 'text':
