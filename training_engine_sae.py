@@ -16,7 +16,7 @@ from keras.backend import image_data_format
 # ===========================
 
 VALIDATION_SPLIT=0.2
-BATCH_SIZE = 16
+# BATCH_SIZE = 16
 
 # ===========================
 
@@ -127,7 +127,7 @@ def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
 
 
 
-def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_per_class):
+def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_per_class, batch_size=16):
 
     # Create ground_truth
     [X_train, Y_train] = getTrain(input_image, gt, height, width, max_samples_per_class)
@@ -154,7 +154,7 @@ def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_
         # Training stage
         model.fit(X_train[label], Y_train[label],
                   verbose=2,
-                  batch_size=BATCH_SIZE,
+                  batch_size=batch_size,
                   validation_split=VALIDATION_SPLIT,
                   callbacks=callbacks_list,
                   epochs=epochs)

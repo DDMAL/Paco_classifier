@@ -31,6 +31,12 @@ class FastCalvoTrainer(RodanTask):
         'title': 'Training parameters',
         'type': 'object',
         'properties': {
+            'Batch Size': {
+                'type': 'integer',
+                'minimum': 1,
+                'default': 16,
+                'maximum': 64,
+            },
             'Maximum number of training epochs': {
                 'type': 'integer',
                 'minimum': 1,
@@ -50,7 +56,7 @@ class FastCalvoTrainer(RodanTask):
                 'type': 'integer',
                 'minimum': 64,
                 'default': 256
-            }
+            },
         },
         'job_queue': 'GPU'
     }
@@ -101,6 +107,7 @@ class FastCalvoTrainer(RodanTask):
             gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
             # Settings
+            batch_size = settings['Batch Size']
             patch_height = settings['Patch height']
             patch_width = settings['Patch width']
             max_number_of_epochs = settings['Maximum number of training epochs']
@@ -136,7 +143,8 @@ class FastCalvoTrainer(RodanTask):
                 width=patch_width,
                 output_path=output_models_path,
                 epochs=max_number_of_epochs,
-                max_samples_per_class=max_samples_per_class
+                max_samples_per_class=max_samples_per_class,
+                batch_size=batch_size,
             )
 
             print('Finishing the Fast CM trainer job.')
