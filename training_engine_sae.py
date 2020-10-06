@@ -9,12 +9,20 @@ from keras.layers import Conv2D, MaxPooling2D, Input
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping,ModelCheckpoint
 from keras.backend import image_data_format
+import keras
+import tensorflow as tf
 
 
 # ===========================
 #       SETTINGS
 # ===========================
 
+# gpu_options = tf.GPUOptions(
+#     allow_growth=True,
+#     per_process_gpu_memory_fraction=0.40
+# )
+# sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+# keras.backend.tensorflow_backend.set_session(sess)
 VALIDATION_SPLIT=0.2
 # BATCH_SIZE = 16
 
