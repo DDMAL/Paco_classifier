@@ -49,12 +49,12 @@ class FastCalvoTrainer(RodanTask):
             },            
             'Patch height': {
                 'type': 'integer',
-                'minimum': 64,
+                'minimum': 32,
                 'default': 256
             },
             'Patch width': {
                 'type': 'integer',
-                'minimum': 64,
+                'minimum': 32,
                 'default': 256
             },
         },
