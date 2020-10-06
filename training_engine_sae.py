@@ -7,7 +7,7 @@ from keras.models import Model
 from keras.layers import Dropout, UpSampling2D, Concatenate
 from keras.layers import Conv2D, MaxPooling2D, Input
 from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping,ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.backend import image_data_format
 import keras
 import tensorflow as tf
@@ -153,7 +153,6 @@ def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_
         )
 
         model.summary()
-
         callbacks_list = [
             ModelCheckpoint(output_path[label], save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
             EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
