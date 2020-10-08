@@ -56,15 +56,17 @@ class FastCalvoClassifier(RodanTask):
         {'name': 'Image', 'minimum': 1, 'maximum': 100, 'resource_types': lambda mime: mime.startswith('image/')},
         {'name': 'Background model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Symbol model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Staff-line model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Text model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        # Optional
+        {'name': 'Staff-line model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Text model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
     )
     output_port_types = (
         {'name': 'Background', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
         {'name': 'Music symbol', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
+        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']},
+        # Optional
         {'name': 'Staff lines', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
         {'name': 'Text', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
-        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']},
     )
 
     """
@@ -87,11 +89,14 @@ class FastCalvoClassifier(RodanTask):
 
             # Ports
             background_model = inputs['Background model'][0]['resource_path']
-            symbol_model = inputs['Symbol model'][0]['resource_path']  
-            staff_model = inputs['Staff-line model'][0]['resource_path']  
-            text_model = inputs['Text model'][0]['resource_path']
+            symbol_model = inputs['Symbol model'][0]['resource_path']
+            model_paths = [background_model, symbol_model]
 
-            model_paths = [background_model, symbol_model, staff_model, text_model]
+            for k in inputs:
+                if k == 'Staff-line model':
+                    model_paths.append(inputs['Staff-line model'][0]['resource_path'])
+                if k == 'Text model':
+                    model_paths.append(inputs['Text model'][0]['resource_path'])
 
             # Settings
             height = settings['Height']
