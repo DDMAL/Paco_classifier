@@ -66,7 +66,7 @@ class FastCalvoTrainer(RodanTask):
         {'name': 'rgba PNG - Background layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Music symbol layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        # Optional layers
+        # Optional ports
         {'name': 'rgba PNG - Staff Lines layer', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Text', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
     )
@@ -75,7 +75,7 @@ class FastCalvoTrainer(RodanTask):
         {'name': 'Background Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Music Symbol Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Log File', 'minimum': 1, 'maximum': 1, 'resource_types': ['text/plain']},
-        # Optional layers
+        # Optional ports
         {'name': 'Staff Lines Model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Text Model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
     )
@@ -120,11 +120,11 @@ class FastCalvoTrainer(RodanTask):
 
             # optional layers
             for k in inputs:
-                if k == 'rgba PNG - Staff Lines layer': 
+                if k == 'rgba PNG - Staff Lines layer':
                     lines = cv2.imread(inputs['rgba PNG - Staff Lines layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
                     lines_mask = (lines[:, :, 3] == 255)
                     gt['staff'] = np.logical_and(lines_mask, regions_mask) # restrict layer to only the staff lines in the selected regions
-                if k == 'rgba PNG - Text': 
+                if k == 'rgba PNG - Text':
                     text = cv2.imread(inputs['rgba PNG - Text'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
                     text_mask = (text[:, :, 3] == 255)
                     gt['text'] = np.logical_and(text_mask, regions_mask) # restrict layer to only the text in the selected regions
