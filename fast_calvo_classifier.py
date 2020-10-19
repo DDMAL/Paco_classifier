@@ -3,21 +3,28 @@
 # Program Description:  Rodan wrapper for Calvo's classifier
 #-----------------------------------------------------------------------------
 
-import cv2
+# Core
+import collections
 import logging
-import numpy as np
+# import json
 import os
 import sys
 
-from rodan.celery import app
+# Third-party
 from celery.utils.log import get_task_logger
+import cv2
+from django.conf import settings as rodan_settings
+import numpy as np
+
+# Project
+from rodan.celery import app
 from rodan.jobs.base import RodanTask
+from rodan.models import Input
 from . import recognition_engine as recognition
 
+"""Wrap Fast Calvo classifier in Rodan."""
 
 logger = get_task_logger(__name__)
-
-"""Wrap Fast Calvo classifier in Rodan."""
 
 
 class FastCalvoClassifier(RodanTask):
@@ -55,18 +62,34 @@ class FastCalvoClassifier(RodanTask):
     input_port_types = (
         {'name': 'Image', 'minimum': 1, 'maximum': 100, 'resource_types': lambda mime: mime.startswith('image/')},
         {'name': 'Background model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Symbol model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        # Optional
-        {'name': 'Staff-line model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Text model', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        # We did not go this route because it would be more difficult for the user to track layers.
+        # {'name': 'Adjustable models', 'minimum': 1, 'maximum': 10, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 0', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 1', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 2', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 3', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 4', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 5', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 6', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 7', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 8', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 9', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
     )
     output_port_types = (
-        {'name': 'Background', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
-        {'name': 'Music symbol', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
         {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']},
-        # Optional
-        {'name': 'Staff lines', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
-        {'name': 'Text', 'minimum': 0, 'maximum': 100, 'resource_types': ['image/rgba+png']},
+        {'name': 'Background', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        # We did not go this route because it would be more difficult for the user to track layers
+        # {'name': 'Layers', 'minimum': 1, 'maximum': 10, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 0', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 1', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 2', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 3', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 4', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 5', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 6', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 7', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 8', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Layer 9', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
     )
 
     """
@@ -81,33 +104,66 @@ class FastCalvoClassifier(RodanTask):
             )
             logger.addHandler(handler)
         try:
+            # Settings
+            height = settings['Height']
+            width = settings['Width']
+            threshold = settings['Threshold']
             rlevel = app.conf.CELERY_REDIRECT_STDOUTS_LEVEL
             app.log.redirect_stdouts_to_logger(logger, rlevel)
 
             # Inner configuration
             mode = 'logical'
 
+            # Fail early if the number of ports doesn't match.
+            input_ports = len([x for x in inputs if x[:5] == 'Model'])
+            output_ports = len([x for x in outputs if x[:5] == 'Layer'])
+            if input_ports != output_ports:
+                raise Exception(
+                    'The number of input layers "Model" does not match the number of'
+                    ' output "Layer"'
+                )
+
             # Ports
             background_model = inputs['Background model'][0]['resource_path']
-            symbol_model = inputs['Symbol model'][0]['resource_path']
-            model_paths = [background_model, symbol_model]
+            model_paths = [background_model]
 
-            for k in inputs:
-                if k == 'Staff-line model':
-                    model_paths.append(inputs['Staff-line model'][0]['resource_path'])
-                if k == 'Text model':
-                    model_paths.append(inputs['Text model'][0]['resource_path'])
+            # Populate optional ports
+            for i in range(input_ports):
+                model_paths += [inputs['Model %d' % i][0]['resource_path']]
 
-            # Settings
-            height = settings['Height']
-            width = settings['Width']
-            threshold = settings['Threshold']
+            # Simulate a switch statement, instead of a series of ifs
+            switch = {
+                0: 'Background',
+                1: 'Layer 0',
+                2: 'Layer 1',
+                3: 'Layer 2',
+                4: 'Layer 3',
+                5: 'Layer 4',
+                6: 'Layer 5',
+                7: 'Layer 6',
+                8: 'Layer 7',
+                9: 'Layer 8',
+                10: 'Layer 9',
+            }
 
+            # status = {
+            #     "inputs": inputs,
+            #     "outputs": outputs,
+            #     "input_ports": input_ports,
+            #     "output_ports": output_ports,
+            #     "input_": [x for x in inputs if x[:5] == "Model"],
+            #     "output_": [x for x in outputs if x[:5] == "Layer"],
+            #     "len_model_paths": len(model_paths),
+            #     "model_paths": model_paths,
+            #     "ports": []
+            # }
+
+            # Image input is a list of images, you can classify a list of images and this iterates on each image.
             for idx, _ in enumerate(inputs['Image']):
+
                 # Process
                 image_filepath = inputs['Image'][idx]['resource_path']
                 image = cv2.imread(image_filepath, True)
-
                 analyses = recognition.process_image_msae(image, model_paths, height, width, mode = mode)
 
                 for id_label, _ in enumerate(model_paths):
@@ -126,19 +182,17 @@ class FastCalvoClassifier(RodanTask):
                     b_channel, g_channel, r_channel = cv2.split(original_masked)
                     original_masked_alpha = cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
 
-                    if id_label == 0:
-                        port = 'Background'
-                    elif id_label == 1:
-                        port = 'Music symbol'
-                    elif id_label == 2:
-                        port = 'Staff lines'
-                    elif id_label == 3:
-                        port = 'Text'
+                    # status["ports"].append(
+                    #     {
+                    #         "switch": switch[id_label],
+                    #         "path": outputs[switch[id_label]][idx]['resource_path'],
+                    #     }
+                    # )
+                    if switch[id_label] in outputs:
+                        cv2.imwrite(outputs[switch[id_label]][idx]['resource_path']+'.png', original_masked_alpha)
+                        os.rename(outputs[switch[id_label]][idx]['resource_path']+'.png', outputs[switch[id_label]][idx]['resource_path'])
 
-                    if port in outputs:
-                        cv2.imwrite(outputs[port][idx]['resource_path']+'.png', original_masked_alpha)
-                        os.rename(outputs[port][idx]['resource_path']+'.png', outputs[port][idx]['resource_path'])
-
+            # raise Exception(json.dumps(status, indent=2))
             return True
         finally:
             sys.stdout, sys.stderr = oldouts

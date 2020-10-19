@@ -49,9 +49,6 @@ class CalvoClassifier(RodanTask):
         {'name': 'Staff lines', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
         {'name': 'Text', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']}
     )
-    
-    
-    
 
     """
     Entry point
