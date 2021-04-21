@@ -1,13 +1,13 @@
 import cv2
 import numpy as np
 import random as rd
-from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Conv2D, MaxPooling2D, Input
-from keras.optimizers import Adadelta
-from keras.callbacks import EarlyStopping,ModelCheckpoint
-from keras.backend import image_data_format
-from keras.layers.normalization import BatchNormalization
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input
+from tensorflow.keras.optimizers import Adadelta
+from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
+from tensorflow.keras.backend import image_data_format
+from tensorflow.keras.layers import BatchNormalization
 
 # ===========================
 #       SETTINGS
@@ -147,6 +147,3 @@ def train_model(input_image, gt, hspan, vspan, output_model_path, max_samples_pe
               epochs=epochs)
 
     return 0
-
-
-
