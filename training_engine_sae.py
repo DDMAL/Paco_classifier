@@ -121,28 +121,24 @@ def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
                             X_train[label].append(sample_x)
                             Y_train[label].append(sample_y)
 
-
     # Manage different ordering
     for label in gt:
-        Y_train[label] = np.expand_dims(np.asarray(Y_train[label]),axis=-1)
+        Y_train[label] = np.expand_dims(np.asarray(Y_train[label]), axis=-1)
         if image_data_format() == 'channels_first':
             X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), 3, patch_height, patch_width)
         else:
             X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), patch_height, patch_width, 3)
 
-
     return [X_train, Y_train]
 
 
-
 def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_per_class, batch_size=16):
-
     # Create ground_truth
     [X_train, Y_train] = getTrain(input_image, gt, height, width, max_samples_per_class)
 
     print('Training created with:')
     for label in Y_train:
-        print("\t{} samples of {}".format(len(Y_train[label]),label))
+        print("\t{} samples of {}".format(len(Y_train[label]), label))
 
     # Training loop
     for label in Y_train:
@@ -154,7 +150,7 @@ def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_
 
         model.summary()
         callbacks_list = [
-            ModelCheckpoint(output_path[label], save_best_only=False, save_weights_only=True, monitor='val_accuracy', verbose=1, mode='max'),
+            ModelCheckpoint(output_path[label], save_best_only=True, save_weights_only=False, monitor='val_acc', verbose=1, mode='max'),
             EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
         ]
 
