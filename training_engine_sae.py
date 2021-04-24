@@ -3,6 +3,7 @@ from __future__ import division
 import cv2
 import numpy as np
 import random as rd
+import os
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input
@@ -148,9 +149,17 @@ def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_
             width=width
         )
 
+        print('output_paths for layer {}'.format(str(label)))
+        print(output_path)
+
+        # In Tensorflow 2, it is necessary to add '.h5' to the end of the filename to force saving
+        # in hdf5 format with a ModelCheckpoint. Rodan will not accept anything but the file's
+        # original filename, however, so we must rename it back after training.
+        new_output_path = os.path.join(output_path[label] + '.h5')
+
         model.summary()
         callbacks_list = [
-            ModelCheckpoint(output_path[label], save_best_only=True, save_weights_only=False, monitor='val_acc', verbose=1, mode='max'),
+            ModelCheckpoint(new_output_path, save_best_only=True, save_weights_only=False, monitor='val_accuracy', verbose=1, mode='max'),
             EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
         ]
 
@@ -164,6 +173,10 @@ def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_
             callbacks=callbacks_list,
             epochs=epochs
         )
+
+        # Rename the file back to what Rodan expects.
+        os.rename(new_output_path, output_path[label])
+
 
     return 0
 
