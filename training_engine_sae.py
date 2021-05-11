@@ -3,12 +3,13 @@ from __future__ import division
 import cv2
 import numpy as np
 import random as rd
-from keras.models import Model
-from keras.layers import Dropout, UpSampling2D, Concatenate
-from keras.layers import Conv2D, MaxPooling2D, Input
-from keras.optimizers import Adam
-from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras.backend import image_data_format
+import os
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.backend import image_data_format
 import keras
 import tensorflow as tf
 
@@ -75,7 +76,7 @@ def get_sae(height, width, pretrained_weights = None):
 
 def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
     # Speed-up factor (TODO this should be a parameter of the job)
-    factor = 100. 
+    factor = 100.
 
     X_train = {}
     Y_train = {}
@@ -93,7 +94,7 @@ def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
     samples_per_class = max_samples_per_class
     for label in gt:
         samples_per_class = min(count[label], samples_per_class)
-    
+
     ratio = {}
     for label in gt:
         ratio[label] = factor * (samples_per_class/float(count[label]))
@@ -106,13 +107,13 @@ def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
             if rd.random() < 1./factor:
 
                 for label in gt:
-                    if gt[label][row][col] == 1:       
+                    if gt[label][row][col] == 1:
                         if rd.random() < ratio[label]: # Take samples according to its ratio
                             from_x = row-(patch_height//2)
                             from_y = col-(patch_width//2)
 
                             sample_x = input_image[from_x:from_x+patch_height,from_y:from_y+patch_width]
-                            
+
                             # Pre-process (check that prediction does the same!)
                             sample_x = (255. - sample_x) / 255.
 
@@ -121,28 +122,24 @@ def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
                             X_train[label].append(sample_x)
                             Y_train[label].append(sample_y)
 
-
-    # Manage different ordering 
+    # Manage different ordering
     for label in gt:
-        Y_train[label] = np.expand_dims(np.asarray(Y_train[label]),axis=-1)
+        Y_train[label] = np.expand_dims(np.asarray(Y_train[label]), axis=-1)
         if image_data_format() == 'channels_first':
             X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), 3, patch_height, patch_width)
         else:
             X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), patch_height, patch_width, 3)
-    
 
     return [X_train, Y_train]
 
 
-
 def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_per_class, batch_size=16):
-
     # Create ground_truth
     [X_train, Y_train] = getTrain(input_image, gt, height, width, max_samples_per_class)
 
     print('Training created with:')
     for label in Y_train:
-        print("\t{} samples of {}".format(len(Y_train[label]),label))
+        print("\t{} samples of {}".format(len(Y_train[label]), label))
 
     # Training loop
     for label in Y_train:
@@ -152,9 +149,17 @@ def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_
             width=width
         )
 
+        print('output_paths for layer {}'.format(str(label)))
+        print(output_path)
+
+        # In Tensorflow 2, it is necessary to add '.h5' to the end of the filename to force saving
+        # in hdf5 format with a ModelCheckpoint. Rodan will not accept anything but the file's
+        # original filename, however, so we must rename it back after training.
+        new_output_path = os.path.join(output_path[label] + '.h5')
+
         model.summary()
         callbacks_list = [
-            ModelCheckpoint(output_path[label], save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
+            ModelCheckpoint(new_output_path, save_best_only=True, save_weights_only=False, monitor='val_accuracy', verbose=1, mode='max'),
             EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
         ]
 
@@ -168,6 +173,10 @@ def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_
             callbacks=callbacks_list,
             epochs=epochs
         )
+
+        # Rename the file back to what Rodan expects.
+        os.rename(new_output_path, output_path[label])
+
 
     return 0
 

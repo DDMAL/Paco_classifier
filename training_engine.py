@@ -1,13 +1,14 @@
 import cv2
 import numpy as np
 import random as rd
-from keras.models import Sequential, Model
-from keras.layers import Dense, Dropout, Activation, Flatten
-from keras.layers import Conv2D, MaxPooling2D, Input
-from keras.optimizers import Adadelta
-from keras.callbacks import EarlyStopping,ModelCheckpoint
-from keras.backend import image_data_format
-from keras.layers.normalization import BatchNormalization
+import os
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.layers import Dense, Dropout, Activation, Flatten
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input
+from tensorflow.keras.optimizers import Adadelta
+from tensorflow.keras.callbacks import EarlyStopping,ModelCheckpoint
+from tensorflow.keras.backend import image_data_format
+from tensorflow.keras.layers import BatchNormalization
 
 # ===========================
 #       SETTINGS
@@ -129,8 +130,13 @@ def train_model(input_image, gt, hspan, vspan, output_model_path, max_samples_pe
 
     model.summary()
 
+    # In Tensorflow 2, it is necessary to add '.h5' to the end of the filename to force saving
+    # in hdf5 format with a ModelCheckpoint. Rodan will not accept anything but the file's
+    # original filename, however, so we must rename it back after training.
+    new_output_path = os.path.join(output_model_path + '.h5')
+
     callbacks_list = [
-            ModelCheckpoint(output_model_path, save_best_only=True, monitor='val_acc', verbose=1, mode='max'),
+            ModelCheckpoint(new_output_path, save_best_only=True, monitor='val_acc', verbose=1, mode='max'),
             EarlyStopping(monitor='val_acc', patience=3, verbose=0, mode='max')
             ]
 
@@ -146,7 +152,7 @@ def train_model(input_image, gt, hspan, vspan, output_model_path, max_samples_pe
               callbacks=callbacks_list,
               epochs=epochs)
 
+    # Rename the file back to what Rodan expects.
+    os.rename(new_output_path, output_model_path)
+
     return 0
-
-
-

@@ -4,8 +4,8 @@ import keras
 import cv2
 import numpy as np
 
-from keras.models import load_model
-from keras.backend import image_data_format
+from tensorflow.keras.models import load_model
+from tensorflow.keras.backend import image_data_format
 
 
 def process_image(image, model_path, vspan, hspan):
