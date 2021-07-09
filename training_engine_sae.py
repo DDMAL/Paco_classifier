@@ -74,109 +74,81 @@ def get_sae(height, width, pretrained_weights = None):
     return model
 
 
-def getTrain(input_image, gt, patch_height, patch_width, max_samples_per_class):
-    # Speed-up factor (TODO this should be a parameter of the job)
-    factor = 100.
+def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
+    
+    while(True):
+        selected_page_idx = np.random.randint(len(gr))
 
-    X_train = {}
-    Y_train = {}
+        gr = grs[selected_page_idx]
+        gt = gt[selected_page_idx][idx_label]
 
-    # Initialize data lists
-    for label in gt:
-        X_train[label] = []
-        Y_train[label] = []
+        # Compute where there is information of this layer
+        x_coords, y_coords = np.where(gt == 1)
+        coords_with_info = (x_coords, y_coords)
 
-    # Calculate the ratio per label
-    count = {}
-    for label in gt:
-        count[label] = (gt[label] == 1).sum()
+        gr_chunks = []
+        gt_chunks = []
 
-    samples_per_class = max_samples_per_class
-    for label in gt:
-        samples_per_class = min(count[label], samples_per_class)
+        num_coords = len(coords_with_info[0])
 
-    ratio = {}
-    for label in gt:
-        ratio[label] = factor * (samples_per_class/float(count[label]))
+        index_coords_selected = [random.randint(0, num_coords) for _ in range(batch_size)]
+        x_coords = coords_with_info[0][index_coords_selected]
+        y_coords = coords_with_info[1][index_coords_selected]
+        
+        for i in range(batch_size):
+            row = x_coords[i]
+            col = y_coords[i]
+            gr_sample = gr_img[row:row+patch_height, col:col+patch_width]
+            gt_sample = gt_img[row:row+patch_height, col:col+patch_width]
+            gr_chunks.append(gr_sample)
+            gt_chunks.append(gt_sample)
 
-    # Get samples according to the ratio per label
-    height, width, _ = input_image.shape
-    for row in range(patch_height,height-patch_height-1):
-        for col in range(patch_width,width-patch_width-1):
-
-            if rd.random() < 1./factor:
-
-                for label in gt:
-                    if gt[label][row][col] == 1:
-                        if rd.random() < ratio[label]: # Take samples according to its ratio
-                            from_x = row-(patch_height//2)
-                            from_y = col-(patch_width//2)
-
-                            sample_x = input_image[from_x:from_x+patch_height,from_y:from_y+patch_width]
-
-                            # Pre-process (check that prediction does the same!)
-                            sample_x = (255. - sample_x) / 255.
-
-                            sample_y = gt[label][from_x:from_x+patch_height,from_y:from_y+patch_width]
-
-                            X_train[label].append(sample_x)
-                            Y_train[label].append(sample_y)
-
-    # Manage different ordering
-    for label in gt:
-        Y_train[label] = np.expand_dims(np.asarray(Y_train[label]), axis=-1)
-        if image_data_format() == 'channels_first':
-            X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), 3, patch_height, patch_width)
-        else:
-            X_train[label] = np.asarray(X_train[label]).reshape(len(X_train[label]), patch_height, patch_width, 3)
-
-    return [X_train, Y_train]
+        yield gr_chunks_arr, gt_chunks_arr
 
 
-def train_msae(input_image, gt, height, width, output_path, epochs, max_samples_per_class, batch_size=16):
+def getTrain(input_images, gts, num_labels, patch_height, patch_width, batch_size):
+    generator_labels = []
+
+    print('num_labels', num_labels)
+    for idx_label in range(num_labels):
+        print('idx_label', idx_label)
+        generator_label = createGenerator(input_images, gts, idx_label, patch_height, patch_width, batch_size)
+        generator_labels.append(generator_label)
+        print(generator_labels)
+
+    return generator_labels
+
+
+def train_msae(input_images, gts, num_labels, height, width, output_path, epochs, max_samples_per_class, batch_size=16):
+
     # Create ground_truth
-    [X_train, Y_train] = getTrain(input_image, gt, height, width, max_samples_per_class)
-
-    print('Training created with:')
-    for label in Y_train:
-        print("\t{} samples of {}".format(len(Y_train[label]), label))
+    print('Creating data generators...')
+    generators = getTrain(input_images, gts, num_labels, height, width, batch_size)
 
     # Training loop
-    for label in Y_train:
-        print('Training a new model for ' + str(label))
+    for label in range(num_labels):
+        print('Training a new model for label #{}'.format(str(label)))
         model = get_sae(
             height=height,
             width=width
         )
 
-        print('output_paths for layer {}'.format(str(label)))
-        print(output_path)
-
-        # In Tensorflow 2, it is necessary to add '.h5' to the end of the filename to force saving
-        # in hdf5 format with a ModelCheckpoint. Rodan will not accept anything but the file's
-        # original filename, however, so we must rename it back after training.
-        new_output_path = os.path.join(output_path[label] + '.h5')
-
         model.summary()
         callbacks_list = [
-            ModelCheckpoint(new_output_path, save_best_only=True, save_weights_only=False, monitor='val_accuracy', verbose=1, mode='max'),
+            ModelCheckpoint(output_path['%s' % label], save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
             EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
         ]
 
         # Training stage
-        model.fit(
-            X_train[label],
-            Y_train[label],
+        model.fit_generator(
+            generators[label],
             verbose=2,
-            batch_size=batch_size,
-            validation_split=VALIDATION_SPLIT,
+            steps_per_epoch=max_samples_per_class//batch_size,
+            validation_data=generators[label],
+            validation_steps=100,
             callbacks=callbacks_list,
             epochs=epochs
         )
-
-        # Rename the file back to what Rodan expects.
-        os.rename(new_output_path, output_path[label])
-
 
     return 0
 

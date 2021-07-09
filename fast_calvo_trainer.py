@@ -44,7 +44,7 @@ class FastCalvoTrainer(RodanTask):
             'Maximum number of training epochs': {
                 'type': 'integer',
                 'minimum': 1,
-                'default': 15
+                'default': 50
             },
             'Maximum number of samples per label': {
                 'type': 'integer',
@@ -66,21 +66,21 @@ class FastCalvoTrainer(RodanTask):
     }
 
     input_port_types = (
-        {'name': 'Image', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgb+png','image/rgb+jpg']},
-        {'name': 'rgba PNG - Background layer', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'Image', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgb+png','image/rgb+jpg']},
+        {'name': 'rgba PNG - Background layer', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
         # We did not go this route because it would be more difficult for the user to track layers
         # {'name': 'rgba PNG - Layers', 'minimum': 1, 'maximum': 10, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 0', 'minimum': 1, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 1', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 2', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 3', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 4', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 5', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 6', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 7', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 8', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 9', 'minimum': 0, 'maximum': 1, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 0', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 1', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 2', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 3', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 4', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 5', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 6', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 7', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 8', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 9', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
     )
 
     output_port_types = (
@@ -120,11 +120,6 @@ class FastCalvoTrainer(RodanTask):
             rlevel = app.conf.CELERY_REDIRECT_STDOUTS_LEVEL
             app.log.redirect_stdouts_to_logger(logger, rlevel)
 
-            # Required input ports
-            input_image = cv2.imread(inputs['Image'][0]['resource_path'], True) # 3-channel
-            background = cv2.imread(inputs['rgba PNG - Background layer'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-            regions = cv2.imread(inputs['rgba PNG - Selected regions'][0]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-            
             # Fail if arbitrary layers are not equal before training occurs.
             input_ports = len([x for x in inputs if x[:-1] == 'rgba PNG - Layer '])
             output_ports = len([x for x in outputs if x[:5] == 'Model'])
@@ -135,27 +130,46 @@ class FastCalvoTrainer(RodanTask):
                     'input_ports: %d output_ports: %d' % (input_ports, output_ports)
                 )
 
-            # Create categorical ground-truth
-            gt = {}
-            regions_mask = (regions[:, :, 3] == 255)
-            gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
+            # Required input ports
+            # TODO assert that all layers have the same number of inputs (otherwise it will crack afterwards)
+            number_of_training_pages = len(inputs['Image'])
+            print('\nnumber_of_training_pages:')
+            print(number_of_training_pages)
 
-            # Create output models
-            output_models_path = {
-                'background': outputs['Background Model'][0]['resource_path'],
-            }
+            input_images = []
+            gts = []
+            for idx in range(number_of_training_pages):
+                input_image = cv2.imread(inputs['Image'][idx]['resource_path'], True) # 3-channel
+                background = cv2.imread(inputs['rgba PNG - Background layer'][idx]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+                regions = cv2.imread(inputs['rgba PNG - Selected regions'][idx]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
+                
+                # Create categorical ground-truth
+                gt = {}
+                regions_mask = (regions[:, :, 3] == 255)
+                gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
-            # Populate remaining inputs and outputs
+                # Create output models
+                output_models_path = {
+                    'background': outputs['Background Model'][0]['resource_path'],
+                }
+
+                # Populate remaining inputs and outputs
+                for i in range(input_ports):
+                    file_obj = cv2.imread(inputs['rgba PNG - Layer %d' % i][idx]['resource_path'], cv2.IMREAD_UNCHANGED)
+                    file_mask = (file_obj[:, :, 3] == 255)
+                    gt['%s' % i] = np.logical_and(file_mask, regions_mask)
+
+                input_images.append(input_image)
+                gts.append(gt)
+            
             for i in range(input_ports):
-                file_obj = cv2.imread(inputs['rgba PNG - Layer %d' % i][0]['resource_path'], cv2.IMREAD_UNCHANGED)
-                file_mask = (file_obj[:, :, 3] == 255)
-                gt['%s' % i] = np.logical_and(file_mask, regions_mask)
                 output_models_path['%s' % i] = outputs['Model %d' % i][0]['resource_path']
 
             # Call in training function
             status = training.train_msae(
-                input_image=input_image,
-                gt=gt,
+                input_images=input_images,
+                gts=gts,
+                num_labels=input_ports,
                 height=patch_height,
                 width=patch_width,
                 output_path=output_models_path,
