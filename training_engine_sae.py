@@ -77,10 +77,10 @@ def get_sae(height, width, pretrained_weights = None):
 def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     
     while(True):
-        selected_page_idx = np.random.randint(len(gr))
 
         gr = grs[selected_page_idx]
         gt = gt[selected_page_idx][idx_label]
+        selected_page_idx = np.random.randint(len(gr))
 
         # Compute where there is information of this layer
         x_coords, y_coords = np.where(gt == 1)
