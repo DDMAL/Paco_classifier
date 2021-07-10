@@ -76,6 +76,8 @@ def get_sae(height, width, pretrained_weights = None):
 
 def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     
+    selected_page_idx = 0
+    
     while(True):
 
         gr = grs[selected_page_idx]
