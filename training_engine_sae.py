@@ -81,7 +81,7 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     while(True):
 
         gr = grs[selected_page_idx]
-        gt = gt[selected_page_idx][idx_label]
+        gt = gts[selected_page_idx][idx_label]
         selected_page_idx = np.random.randint(len(gr))
 
         # Compute where there is information of this layer
