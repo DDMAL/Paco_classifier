@@ -81,7 +81,7 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     while(True):
 
         gr = grs[selected_page_idx]
-        gt = gts[selected_page_idx][idx_label]
+        gt = grs[selected_page_idx][idx_label]
         selected_page_idx = np.random.randint(len(gr))
 
         # Compute where there is information of this layer
@@ -93,7 +93,7 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
 
         num_coords = len(coords_with_info[0])
 
-        index_coords_selected = [random.randint(0, num_coords) for _ in range(batch_size)]
+        index_coords_selected = [np.random.randint(0, num_coords) for _ in range(batch_size)]
         x_coords = coords_with_info[0][index_coords_selected]
         y_coords = coords_with_info[1][index_coords_selected]
         
