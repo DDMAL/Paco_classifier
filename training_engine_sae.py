@@ -80,7 +80,7 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
 
         selected_page_idx = np.random.randint(len(grs)) # Changed len to grs from gr 
         gr = grs[selected_page_idx]
-        label = f"{idx_label}"
+        label = str(idx_label)
         gt = gts[selected_page_idx][label]
 
         # try:
