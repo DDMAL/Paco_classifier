@@ -103,6 +103,9 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
             gr_chunks.append(gr_sample)
             gt_chunks.append(gt_sample)
         
+
+        gr_chunks_arr = np.array(gr_chunks)
+        gt_chunks_arr = np.array(gt_chunks)
         # convert gr_chunks and gt_chunks to the numpy arrays that are yield below 
 
         yield gr_chunks_arr, gt_chunks_arr # convert into npy before yielding 
