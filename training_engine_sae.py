@@ -94,6 +94,15 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
         # Compute where there is information of this layer
         
         x_coords, y_coords = np.where(gt == 1)
+        coords_with_info = (x_coords, y_coords)
+
+        gr_chunks = []
+        gt_chunks = []
+
+        num_coords = len(coords_with_info[0])
+
+        index_coords_selected = [np.random.randint(0, num_coords) for _ in range(batch_size)]
+        x_coords = coords_with_info[0][index_coords_selected]
         y_coords = coords_with_info[1][index_coords_selected]
         
         for i in range(batch_size):
