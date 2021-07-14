@@ -77,10 +77,10 @@ def get_sae(height, width, pretrained_weights = None):
 def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     
     while(True):
-        selected_page_idx = np.random.randint(len(gr))
 
+        selected_page_idx = np.random.randint(len(grs)) # Changed len to grs from gr 
         gr = grs[selected_page_idx]
-        gt = gt[selected_page_idx][idx_label]
+        gt = gts[selected_page_idx][idx_label] # Changed gt to gts -> selecting ground truth and greyscale 
 
         # Compute where there is information of this layer
         x_coords, y_coords = np.where(gt == 1)
@@ -91,19 +91,21 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
 
         num_coords = len(coords_with_info[0])
 
-        index_coords_selected = [random.randint(0, num_coords) for _ in range(batch_size)]
+        index_coords_selected = [np.random.randint(0, num_coords) for _ in range(batch_size)]
         x_coords = coords_with_info[0][index_coords_selected]
         y_coords = coords_with_info[1][index_coords_selected]
         
         for i in range(batch_size):
             row = x_coords[i]
             col = y_coords[i]
-            gr_sample = gr_img[row:row+patch_height, col:col+patch_width]
-            gt_sample = gt_img[row:row+patch_height, col:col+patch_width]
+            gr_sample = gr[row:row+patch_height, col:col+patch_width] # Greyscale image 
+            gt_sample = gt[row:row+patch_height, col:col+patch_width] # Ground truth 
             gr_chunks.append(gr_sample)
             gt_chunks.append(gt_sample)
+        
+        # convert gr_chunks and gt_chunks to the numpy arrays that are yield below 
 
-        yield gr_chunks_arr, gt_chunks_arr
+        yield gr_chunks_arr, gt_chunks_arr # convert into npy before yielding 
         
 
 def getTrain(input_images, gts, num_labels, patch_height, patch_width, batch_size):
