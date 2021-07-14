@@ -80,19 +80,20 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
 
         selected_page_idx = np.random.randint(len(grs)) # Changed len to grs from gr 
         gr = grs[selected_page_idx]
-        gt = gts[selected_page_idx][idx_label] # Changed gt to gts -> selecting ground truth and greyscale 
+        label = f"{idx_label}"
+        gt = gts[selected_page_idx][label]
 
+        # try:
+        #     arr = [val for val in gts[selected_page_idx]]
+        #     gt = gts[selected_page_idx][arr[0]] # Changed gt to gts -> selecting ground truth and greyscale 
+        # except KeyError:
+        #     sel_idx = ''
+        #     for value in gts[selected_page_idx]:
+        #         sel_idx = f"{sel_idx}  {value}"
+        #     raise KeyError(f"Index label: {idx_label} could not be found in gts[{selected_page_idx}]. Possible idx are: {sel_idx}")
         # Compute where there is information of this layer
+        
         x_coords, y_coords = np.where(gt == 1)
-        coords_with_info = (x_coords, y_coords)
-
-        gr_chunks = []
-        gt_chunks = []
-
-        num_coords = len(coords_with_info[0])
-
-        index_coords_selected = [np.random.randint(0, num_coords) for _ in range(batch_size)]
-        x_coords = coords_with_info[0][index_coords_selected]
         y_coords = coords_with_info[1][index_coords_selected]
         
         for i in range(batch_size):
