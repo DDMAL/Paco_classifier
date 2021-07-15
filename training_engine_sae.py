@@ -134,7 +134,7 @@ def getTrain(input_images, gts, num_labels, patch_height, patch_width, batch_siz
     return generator_labels
 
 
-def train_msae(input_images, gts, num_labels, height, width, output_path, epochs, max_samples_per_class, batch_size=16):
+def train_msae(input_images, gts, num_labels, height, width, output_path, epochs, max_samples_per_class, batch_size=16, worker=1):
 
     # Create ground_truth
     print('Creating data generators...')
@@ -157,7 +157,7 @@ def train_msae(input_images, gts, num_labels, height, width, output_path, epochs
         # Training stage
         model.fit(
             generators[label],
-            workers=1,
+            workers=worker,
             verbose=2,
             steps_per_epoch=max_samples_per_class//batch_size,
             validation_data=generators[label],
