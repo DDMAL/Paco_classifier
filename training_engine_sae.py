@@ -157,6 +157,7 @@ def train_msae(input_images, gts, num_labels, height, width, output_path, epochs
         # Training stage
         model.fit(
             generators[label],
+            workers=1,
             verbose=2,
             steps_per_epoch=max_samples_per_class//batch_size,
             validation_data=generators[label],
