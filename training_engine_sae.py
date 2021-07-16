@@ -82,16 +82,6 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
         gr = grs[selected_page_idx]
         label = str(idx_label)
         gt = gts[selected_page_idx][label]
-
-        # try:
-        #     arr = [val for val in gts[selected_page_idx]]
-        #     gt = gts[selected_page_idx][arr[0]] # Changed gt to gts -> selecting ground truth and greyscale 
-        # except KeyError:
-        #     sel_idx = ''
-        #     for value in gts[selected_page_idx]:
-        #         sel_idx = f"{sel_idx}  {value}"
-        #     raise KeyError(f"Index label: {idx_label} could not be found in gts[{selected_page_idx}]. Possible idx are: {sel_idx}")
-        # Compute where there is information of this layer
         
         x_coords, y_coords = np.where(gt == 1)
         coords_with_info = (x_coords, y_coords)
