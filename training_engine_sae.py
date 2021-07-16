@@ -77,12 +77,12 @@ def get_sae(height, width, pretrained_weights = None):
 def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     
     while(True):
-        selected_page_idx = np.random.randint(len(gr))
 
+        selected_page_idx = np.random.randint(len(grs)) # Changed len to grs from gr 
         gr = grs[selected_page_idx]
-        gt = gt[selected_page_idx][idx_label]
-
-        # Compute where there is information of this layer
+        label = str(idx_label)
+        gt = gts[selected_page_idx][label]
+        
         x_coords, y_coords = np.where(gt == 1)
         coords_with_info = (x_coords, y_coords)
 
@@ -91,20 +91,25 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
 
         num_coords = len(coords_with_info[0])
 
-        index_coords_selected = [random.randint(0, num_coords) for _ in range(batch_size)]
+        index_coords_selected = [np.random.randint(0, num_coords) for _ in range(batch_size)]
         x_coords = coords_with_info[0][index_coords_selected]
         y_coords = coords_with_info[1][index_coords_selected]
         
         for i in range(batch_size):
             row = x_coords[i]
             col = y_coords[i]
-            gr_sample = gr_img[row:row+patch_height, col:col+patch_width]
-            gt_sample = gt_img[row:row+patch_height, col:col+patch_width]
+            gr_sample = gr[row:row+patch_height, col:col+patch_width] # Greyscale image 
+            gt_sample = gt[row:row+patch_height, col:col+patch_width] # Ground truth 
             gr_chunks.append(gr_sample)
             gt_chunks.append(gt_sample)
+        
 
-        yield gr_chunks_arr, gt_chunks_arr
+        gr_chunks_arr = np.array(gr_chunks)
+        gt_chunks_arr = np.array(gt_chunks)
+        # convert gr_chunks and gt_chunks to the numpy arrays that are yield below 
 
+        yield gr_chunks_arr, gt_chunks_arr # convert into npy before yielding 
+        
 
 def getTrain(input_images, gts, num_labels, patch_height, patch_width, batch_size):
     generator_labels = []
@@ -133,14 +138,16 @@ def train_msae(input_images, gts, num_labels, height, width, output_path, epochs
             width=width
         )
 
+        new_output_path = os.path.join(output_path['%s' % label] + '.h5')
+
         model.summary()
         callbacks_list = [
-            ModelCheckpoint(output_path['%s' % label], save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
+            ModelCheckpoint(new_output_path, save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
             EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
         ]
 
         # Training stage
-        model.fit_generator(
+        model.fit(
             generators[label],
             verbose=2,
             steps_per_epoch=max_samples_per_class//batch_size,
@@ -149,6 +156,9 @@ def train_msae(input_images, gts, num_labels, height, width, output_path, epochs
             callbacks=callbacks_list,
             epochs=epochs
         )
+
+        # Rename the file back to what Rodan expects.
+        os.rename(new_output_path, output_path['%s' % label])
 
     return 0
 
