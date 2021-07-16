@@ -148,16 +148,17 @@ def train_msae(input_images, gts, num_labels, height, width, output_path, epochs
             width=width
         )
 
+        new_output_path = os.path.join(output_path['%s' % label] + '.h5')
+
         model.summary()
         callbacks_list = [
-            ModelCheckpoint(output_path['%s' % label], save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
+            ModelCheckpoint(new_output_path, save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
             EarlyStopping(monitor='val_accuracy', patience=3, verbose=0, mode='max')
         ]
 
         # Training stage
-        model.fit_generator(
+        model.fit(
             generators[label],
-            workers=1,
             verbose=2,
             steps_per_epoch=max_samples_per_class//batch_size,
             validation_data=generators[label],
@@ -165,6 +166,9 @@ def train_msae(input_images, gts, num_labels, height, width, output_path, epochs
             callbacks=callbacks_list,
             epochs=epochs
         )
+
+        # Rename the file back to what Rodan expects.
+        os.rename(new_output_path, output_path['%s' % label])
 
     return 0
 
