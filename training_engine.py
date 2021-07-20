@@ -147,10 +147,12 @@ def train_model(input_image, gt, hspan, vspan, output_model_path, max_samples_pe
     # Training stage
     model.fit(X_train, Y_train,
               verbose=2,
+              workers=1,
               batch_size=BATCH_SIZE,
               validation_split=VALIDATION_SPLIT,
               callbacks=callbacks_list,
-              epochs=epochs)
+              epochs=epochs,
+              use_multiprocessing=False)
 
     # Rename the file back to what Rodan expects.
     os.rename(new_output_path, output_model_path)
