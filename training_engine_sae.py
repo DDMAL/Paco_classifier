@@ -12,6 +12,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.backend import image_data_format
 import keras
 import tensorflow as tf
+from . import threadsafe_gen
 
 
 # ===========================
@@ -73,7 +74,14 @@ def get_sae(height, width, pretrained_weights = None):
 
     return model
 
+def threadsafe_generator(f):
+    """A decorator that takes a generator function and makes it thread-safe.
+    """
+    def g(*a, **kw):
+        return threadsafe_gen(f(*a, **kw))
+    return g
 
+@threadsafe_generator # Credit: https://anandology.com/blog/using-iterators-and-generators/
 def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     
     while(True):
