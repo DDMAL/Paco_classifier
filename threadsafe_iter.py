@@ -1,6 +1,9 @@
 import threading
 #Credit: https://anandology.com/blog/using-iterators-and-generators/
-class threadsafe_gen:
+class threadsafe_iter:
+    """Takes an iterator/generator and makes it thread-safe by
+    serializing call to the `next` method of given iterator/generator.
+    """
     def __init__(self, it):
         self.it = it
         self.lock = threading.Lock()
