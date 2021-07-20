@@ -128,7 +128,7 @@ def train_model(input_image, gt, hspan, vspan, output_model_path, max_samples_pe
         labels=num_labels
     )
 
-    model.summary()
+    #model.summary()
 
     # In Tensorflow 2, it is necessary to add '.h5' to the end of the filename to force saving
     # in hdf5 format with a ModelCheckpoint. Rodan will not accept anything but the file's

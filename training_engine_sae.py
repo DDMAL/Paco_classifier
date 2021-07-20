@@ -12,6 +12,7 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.backend import image_data_format
 import keras
 import tensorflow as tf
+import threading
 
 
 # ===========================
@@ -28,6 +29,21 @@ VALIDATION_SPLIT=0.2
 # BATCH_SIZE = 16
 
 # ===========================
+class threadsafe_iter:
+    """Takes an iterator/generator and makes it thread-safe by
+    serializing call to the `next` method of given iterator/generator.
+    """
+    def __init__(self, it):
+        self.it = it
+        self.lock = threading.Lock()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self.lock:
+            return next(self.it)
+
 
 def get_input_shape(height, width, channels = 3):
     if image_data_format() == 'channels_first':
@@ -74,8 +90,16 @@ def get_sae(height, width, pretrained_weights = None):
     return model
 
 
+def threadsafe_generator(f):
+    """A decorator that takes a generator function and makes it thread-safe.
+    """
+    def g(*a, **kw):
+        return threadsafe_iter(f(*a, **kw))
+    return g
+
+
+@threadsafe_generator # Credit: https://anandology.com/blog/using-iterators-and-generators/
 def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
-    
     while(True):
 
         selected_page_idx = np.random.randint(len(grs)) # Changed len to grs from gr 
