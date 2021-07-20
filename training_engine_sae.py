@@ -74,14 +74,14 @@ def get_sae(height, width, pretrained_weights = None):
 
     return model
 
-def threadsafe_generator(f):
-    """A decorator that takes a generator function and makes it thread-safe.
-    """
-    def g(*a, **kw):
-        return threadsafe_gen(f(*a, **kw))
-    return g
+# def threadsafe_generator(f):
+#     """A decorator that takes a generator function and makes it thread-safe.
+#     """
+#     def g(*a, **kw):
+#         return threadsafe_gen(f(*a, **kw))
+#     return g
 
-@threadsafe_generator # Credit: https://anandology.com/blog/using-iterators-and-generators/
+#@threadsafe_generator # Credit: https://anandology.com/blog/using-iterators-and-generators/
 def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
     
     while(True):
@@ -126,6 +126,7 @@ def getTrain(input_images, gts, num_labels, patch_height, patch_width, batch_siz
     for idx_label in range(num_labels):
         print('idx_label', idx_label)
         generator_label = createGenerator(input_images, gts, idx_label, patch_height, patch_width, batch_size)
+        generator_label = threadsafe_gen(generator_label)
         generator_labels.append(generator_label)
         print(generator_labels)
 
