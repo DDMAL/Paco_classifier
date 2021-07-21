@@ -163,7 +163,7 @@ def train_msae(input_images, gts, num_labels, height, width, output_path, epochs
         )
         #model.summary()
 
-        new_output_path = new_output_path['%s' % label] + ".h5"
+        new_output_path = output_path['%s' % label] + ".h5"
 
         callbacks_list = [
             ModelCheckpoint(new_output_path, save_best_only=True, monitor='val_accuracy', verbose=1, mode='max'),
