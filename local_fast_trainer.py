@@ -48,6 +48,7 @@ outputs = {
 
 input_ports = len([x for x in inputs if "rgba PNG" in x])
 output_ports = len([x for x in outputs if "Model" in x or "Log" in x])
+int_model = input_ports - 2 # This only has the number of "Model x" inputs.
 if input_ports != output_ports:
     raise Exception(
         'The number of input layers "rgba PNG - Layers" does not match the number of'
@@ -86,7 +87,7 @@ for idx in range(number_of_training_pages):
     }
 
     # Populate remaining inputs and outputs
-    for i in range(input_ports):
+    for i in range(int_model):
         file_obj = cv2.imread(
             inputs["rgba PNG - Layer %d" % i][idx]["resource_path"],
             cv2.IMREAD_UNCHANGED,
@@ -97,7 +98,7 @@ for idx in range(number_of_training_pages):
     input_images.append(input_image)
     gts.append(gt)
 
-for i in range(input_ports):
+for i in range(int_model):
     output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"]
     # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
 
@@ -105,7 +106,7 @@ for i in range(input_ports):
 status = training.train_msae(
     input_images=input_images,
     gts=gts,
-    num_labels=input_ports,
+    num_labels=int_model,
     height=patch_height,
     width=patch_width,
     output_path=output_models_path,
@@ -116,4 +117,3 @@ status = training.train_msae(
 
 # THIS IS ONLY CREATING THE MODEL 0 FILE!!!!!!
 print("Finishing the Fast CM trainer job.")
- 
