@@ -63,6 +63,11 @@ number_of_training_pages = len(inputs["Image"])
 input_images = []
 gts = []
 
+# Create output models
+output_models_path = {
+    "background": outputs["Background Model"][0]["resource_path"],
+}
+
 for idx in range(number_of_training_pages):
     input_image = cv2.imread(inputs["Image"][idx]["resource_path"], True)  # 3-channel
     background = cv2.imread(
@@ -80,11 +85,6 @@ for idx in range(number_of_training_pages):
     gt["background"] = (
         background[:, :, 3] == 255
     )  # background is already restricted to the selected regions (based on Pixel.js' behaviour)
-
-    # Create output models
-    output_models_path = {
-        "background": outputs["Background Model"][0]["resource_path"],
-    }
 
     # Populate remaining inputs and outputs
     for i in range(int_model):
