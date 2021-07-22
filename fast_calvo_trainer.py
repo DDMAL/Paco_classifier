@@ -138,6 +138,12 @@ class FastCalvoTrainer(RodanTask):
 
             input_images = []
             gts = []
+            
+            # Create output models
+            output_models_path = {
+                'background': outputs['Background Model'][0]['resource_path'],
+            }
+            
             for idx in range(number_of_training_pages):
                 input_image = cv2.imread(inputs['Image'][idx]['resource_path'], True) # 3-channel
                 background = cv2.imread(inputs['rgba PNG - Background layer'][idx]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
@@ -147,11 +153,6 @@ class FastCalvoTrainer(RodanTask):
                 gt = {}
                 regions_mask = (regions[:, :, 3] == 255)
                 gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
-
-                # Create output models
-                output_models_path = {
-                    'background': outputs['Background Model'][0]['resource_path'],
-                }
 
                 # Populate remaining inputs and outputs
                 for i in range(input_ports):
