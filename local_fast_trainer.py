@@ -1,4 +1,4 @@
-'''Local Fast Trainer
+"""Local Fast Trainer
 This is the file for running Calvo Fast Trainer loaclly. Make sure 
 to have an 'Images' folder with the correct inputs in the same directory.
 If not, you can change the values in 'inputs' and 'outputs'. 
@@ -12,7 +12,7 @@ a Model 0, and a Log File.
 If you're running it in a Rodan container, this will be located in code/Rodan/rodan/jobs/Calvo_classifier
 If the container is already running, try `docker exec -it [container_name] bash` to run the script without 
 stopping.
-'''
+"""
 
 import logging
 import os
@@ -29,35 +29,39 @@ max_number_of_epochs = 1
 max_samples_per_class = 100
 
 
-
 # Fail if arbitrary layers are not equal before training occurs.
-inputs = {'Image': [{'resource_path': 'Images/Halifax_Folio_42v.png'}],
-                'rgba PNG - Background layer': [{'resource_path': 'Images/042v_BackgroundForNeumes.png'}],
-                'rgba PNG - Layer 0': [{'resource_path': 'Images/042v_Neumes.png'}],
-                'rgba PNG - Selected regions': [{'resource_path': 'Images/042v_SelectedRegion.png'}]
-                }
-outputs = {'Background Model': [{'resource_path': 'Images/back.hdf5'}],
-                'Model 0': [{'resource_path': 'Images/model0.hdf5'}],
-                'Log File': [{'resource_path': 'Images/logfile'}]
-                }
+inputs = {
+    "Image": [{"resource_path": "Images/Halifax_Folio_42v.png"}],
+    "rgba PNG - Background layer": [
+        {"resource_path": "Images/042v_BackgroundForNeumes.png"}
+    ],
+    "rgba PNG - Layer 0": [{"resource_path": "Images/042v_Neumes.png"}],
+    "rgba PNG - Selected regions": [
+        {"resource_path": "Images/042v_SelectedRegion.png"}
+    ],
+}
+outputs = {
+    "Background Model": [{"resource_path": "Images/back.hdf5"}],
+    "Model 0": [{"resource_path": "Images/model0.hdf5"}],
+    "Log File": [{"resource_path": "Images/logfile"}],
+}
 
-input_ports = len([x for x in inputs if x[:-1] == "rgba PNG - Layer "])
-output_ports = len([x for x in outputs if x[:5] == "Model"])
+input_ports = len([x for x in inputs if "rgba PNG" in x])
+output_ports = len([x for x in outputs if "Model" in x or "Log" in x])
 if input_ports != output_ports:
     raise Exception(
         'The number of input layers "rgba PNG - Layers" does not match the number of'
         ' output "Adjustable models"\n'
-        "input_ports: %d output_ports: %d" % (input_ports, output_ports)
+        "input_ports: " + str(input_ports) + "output_ports: " + str(output_ports)
     )
 
 # Required input ports
 # TODO assert that all layers have the same number of inputs (otherwise it will crack afterwards)
 number_of_training_pages = len(inputs["Image"])
-print("\nnumber_of_training_pages:")
-print(number_of_training_pages)
 
 input_images = []
 gts = []
+
 for idx in range(number_of_training_pages):
     input_image = cv2.imread(inputs["Image"][idx]["resource_path"], True)  # 3-channel
     background = cv2.imread(
@@ -94,7 +98,7 @@ for idx in range(number_of_training_pages):
     gts.append(gt)
 
 for i in range(input_ports):
-    output_models_path["%s" % i] = outputs["Model %d" % i][0]["resource_path"]
+    output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"]
     # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
 
 # Call in training function
@@ -112,3 +116,4 @@ status = training.train_msae(
 
 # THIS IS ONLY CREATING THE MODEL 0 FILE!!!!!!
 print("Finishing the Fast CM trainer job.")
+ 
