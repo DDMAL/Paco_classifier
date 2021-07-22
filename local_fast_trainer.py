@@ -53,7 +53,7 @@ if input_ports != output_ports:
     raise Exception(
         'The number of input layers "rgba PNG - Layers" does not match the number of'
         ' output "Adjustable models"\n'
-        "input_ports: " + str(input_ports) + "output_ports: " + str(output_ports)
+        "input_ports: " + str(input_ports) + " output_ports: " + str(output_ports)
     )
 
 # Required input ports
