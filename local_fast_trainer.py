@@ -89,11 +89,11 @@ for idx in range(number_of_training_pages):
     # Populate remaining inputs and outputs
     for i in range(int_model):
         file_obj = cv2.imread(
-            inputs["rgba PNG - Layer %d" % i][idx]["resource_path"],
+            inputs["rgba PNG - Layer {layer_num}".format(layer_num=i)][idx]["resource_path"],
             cv2.IMREAD_UNCHANGED,
         )
         file_mask = file_obj[:, :, 3] == 255
-        gt["%s" % i] = np.logical_and(file_mask, regions_mask)
+        gt[str(i)] = np.logical_and(file_mask, regions_mask)
 
     input_images.append(input_image)
     gts.append(gt)
