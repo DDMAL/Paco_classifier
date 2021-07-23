@@ -32,23 +32,23 @@ max_samples_per_class = 100
 # Fail if arbitrary layers are not equal before training occurs.
 inputs = {
     "Image": [{"resource_path": "Images/Halifax_Folio_42v.png"}],
-    "rgba PNG - Background layer": [
+    "rgba PNG - Layer 0 (Background)": [
         {"resource_path": "Images/042v_BackgroundForNeumes.png"}
     ],
-    "rgba PNG - Layer 0": [{"resource_path": "Images/042v_Neumes.png"}],
+    "rgba PNG - Layer 1": [{"resource_path": "Images/042v_Neumes.png"}],
     "rgba PNG - Selected regions": [
         {"resource_path": "Images/042v_SelectedRegion.png"}
     ],
 }
 outputs = {
-    "Background Model": [{"resource_path": "Images/back.hdf5"}],
-    "Model 0": [{"resource_path": "Images/model0.hdf5"}],
+    "Model 0": [{"resource_path": "Images/back.hdf5"}],
+    "Model 1": [{"resource_path": "Images/model0.hdf5"}],
     "Log File": [{"resource_path": "Images/logfile"}],
 }
 
 input_ports = len([x for x in inputs if "rgba PNG" in x])
 output_ports = len([x for x in outputs if "Model" in x or "Log" in x])
-int_model = input_ports - 2 # This only has the number of "Model x" inputs.
+int_model = input_ports - 1 # Discard Selected Regions for Model Creation
 if input_ports != output_ports:
     raise Exception(
         'The number of input layers "rgba PNG - Layers" does not match the number of'
@@ -64,14 +64,12 @@ input_images = []
 gts = []
 
 # Create output models
-output_models_path = {
-    "background": outputs["Background Model"][0]["resource_path"],
-}
+output_models_path = {}
 
 for idx in range(number_of_training_pages):
     input_image = cv2.imread(inputs["Image"][idx]["resource_path"], True)  # 3-channel
     background = cv2.imread(
-        inputs["rgba PNG - Background layer"][idx]["resource_path"],
+        inputs["rgba PNG - Layer 0 (Background)"][idx]["resource_path"],
         cv2.IMREAD_UNCHANGED,
     )  # 4-channel
     regions = cv2.imread(
@@ -82,12 +80,13 @@ for idx in range(number_of_training_pages):
     # Create categorical ground-truth
     gt = {}
     regions_mask = regions[:, :, 3] == 255
-    gt["background"] = (
-        background[:, :, 3] == 255
-    )  # background is already restricted to the selected regions (based on Pixel.js' behaviour)
+    # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
     # Populate remaining inputs and outputs
-    for i in range(int_model):
+    bg_mask = background[:, :, 3] == 255
+    gt["0"] = np.logical_and(bg_mask, regions_mask)
+
+    for i in range(1, int_model):
         file_obj = cv2.imread(
             inputs["rgba PNG - Layer {layer_num}".format(layer_num=i)][idx]["resource_path"],
             cv2.IMREAD_UNCHANGED,
