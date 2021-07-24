@@ -1,16 +1,16 @@
 """Local Fast Trainer
-This is the file for running Calvo Fast Trainer loaclly. Make sure 
+This is the file for running Calvo Fast Trainer loaclly. Make sure
 to have an 'Images' folder with the correct inputs in the same directory.
-If not, you can change the values in 'inputs' and 'outputs'. 
+If not, you can change the values in 'inputs' and 'outputs'.
 
 Simply run `python local_fast_trainer.py` to see the output.
 This will call `training_engine_sae.py`.
 
 It should generate 3 files in its current state. A background model,
-a Model 0, and a Log File. 
+a Model 0, and a Log File.
 
 If you're running it in a Rodan container, this will be located in code/Rodan/rodan/jobs/Calvo_classifier
-If the container is already running, try `docker exec -it [container_name] bash` to run the script without 
+If the container is already running, try `docker exec -it [container_name] bash` to run the script without
 stopping.
 """
 
@@ -67,7 +67,7 @@ gts = []
 output_models_path = {}
 
 for idx in range(number_of_training_pages):
-    input_image = cv2.imread(inputs["Image"][idx]["resource_path"], True)  # 3-channel
+    input_image = cv2.imread(inputs["Image"][idx]["resource_path"], cv2.IMREAD_COLOR)  # 3-channel
     background = cv2.imread(
         inputs["rgba PNG - Layer 0 (Background)"][idx]["resource_path"],
         cv2.IMREAD_UNCHANGED,
