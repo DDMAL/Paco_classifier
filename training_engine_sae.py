@@ -129,27 +129,26 @@ def threadsafe_generator(f):
 
 
 @threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
+def createGenerator(input_images, segmented_images, idx_label, patch_height, patch_width, batch_size):
     while True:
 
-        selected_page_idx = np.random.randint(len(grs))  # Changed len to grs from gr
-        gr = grs[selected_page_idx]
+        selected_page_idx = np.random.randint(len(input_images))  # Changed len to grs from gr
+        gr = input_images[selected_page_idx]
         label = str(idx_label)
-        gt = gts[selected_page_idx][label]
+        gt = segmented_images[selected_page_idx][label]
 
-        x_coords, y_coords = np.where(gt == 1)
-        coords_with_info = (x_coords, y_coords)
+        potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
 
         gr_chunks = []
         gt_chunks = []
 
-        num_coords = len(coords_with_info[0])
+        num_coords = len(potential_training_examples[0])
 
         index_coords_selected = [
             np.random.randint(0, num_coords) for _ in range(batch_size)
         ]
-        x_coords = coords_with_info[0][index_coords_selected]
-        y_coords = coords_with_info[1][index_coords_selected]
+        x_coords = potential_training_examples[0][index_coords_selected]
+        y_coords = potential_training_examples[1][index_coords_selected]
 
         for i in range(batch_size):
             row = x_coords[i]
