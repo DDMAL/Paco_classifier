@@ -137,7 +137,7 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
         label = str(idx_label)
         gt = gts[selected_page_idx][label]
 
-        potential_training_examples = np.where(gt == 1)
+        potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
 
         gr_chunks = []
         gt_chunks = []
