@@ -137,19 +137,18 @@ def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
         label = str(idx_label)
         gt = gts[selected_page_idx][label]
 
-        x_coords, y_coords = np.where(gt == 1)
-        coords_with_info = (x_coords, y_coords)
+        potential_training_examples = np.where(gt == 1)
 
         gr_chunks = []
         gt_chunks = []
 
-        num_coords = len(coords_with_info[0])
+        num_coords = len(potential_training_examples[0])
 
         index_coords_selected = [
             np.random.randint(0, num_coords) for _ in range(batch_size)
         ]
-        x_coords = coords_with_info[0][index_coords_selected]
-        y_coords = coords_with_info[1][index_coords_selected]
+        x_coords = potential_training_examples[0][index_coords_selected]
+        y_coords = potential_training_examples[1][index_coords_selected]
 
         for i in range(batch_size):
             row = x_coords[i]
