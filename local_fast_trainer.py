@@ -79,11 +79,12 @@ for idx in range(number_of_training_pages):
 
     # Create categorical ground-truth
     gt = {}
-    regions_mask = regions[:, :, 3] == 255
+    TRANSPARENCY = 3
+    regions_mask = regions[:, :, TRANSPARENCY] == 255
     # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
     # Populate remaining inputs and outputs
-    bg_mask = background[:, :, 3] == 255
+    bg_mask = background[:, :, TRANSPARENCY] == 255
     gt["0"] = np.logical_and(bg_mask, regions_mask)
 
     for i in range(1, int_model):
@@ -91,7 +92,7 @@ for idx in range(number_of_training_pages):
             inputs["rgba PNG - Layer {layer_num}".format(layer_num=i)][idx]["resource_path"],
             cv2.IMREAD_UNCHANGED,
         )
-        file_mask = file_obj[:, :, 3] == 255
+        file_mask = file_obj[:, :, TRANSPARENCY] == 255
         gt[str(i)] = np.logical_and(file_mask, regions_mask)
 
     input_images.append(input_image)
