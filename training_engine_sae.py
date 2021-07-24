@@ -129,13 +129,13 @@ def threadsafe_generator(f):
 
 
 @threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGenerator(grs, gts, idx_label, patch_height, patch_width, batch_size):
+def createGenerator(input_images, segmented_images, idx_label, patch_height, patch_width, batch_size):
     while True:
 
-        selected_page_idx = np.random.randint(len(grs))  # Changed len to grs from gr
-        gr = grs[selected_page_idx]
+        selected_page_idx = np.random.randint(len(input_images))  # Changed len to grs from gr
+        gr = input_images[selected_page_idx]
         label = str(idx_label)
-        gt = gts[selected_page_idx][label]
+        gt = segmented_images[selected_page_idx][label]
 
         potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
 
