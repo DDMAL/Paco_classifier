@@ -67,12 +67,11 @@ class FastCalvoTrainer(RodanTask):
 
     input_port_types = (
         {'name': 'Image', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgb+png','image/rgb+jpg']},
-        {'name': 'rgba PNG - Background layer', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
         # We did not go this route because it would be more difficult for the user to track layers
         # {'name': 'rgba PNG - Layers', 'minimum': 1, 'maximum': 10, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 0', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 1', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 0 (Background)', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 1', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Layer 2', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Layer 3', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
         {'name': 'rgba PNG - Layer 4', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
@@ -84,12 +83,10 @@ class FastCalvoTrainer(RodanTask):
     )
 
     output_port_types = (
-        {'name': 'Background Model', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Log File', 'minimum': 1, 'maximum': 1, 'resource_types': ['text/plain']},
         # We did not go this route because it would be more difficult for the user to track layers
         # {'name': 'Adjustable models', 'minimum': 1, 'maximum': 10, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 0', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Model 1', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Model 1', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 2', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 3', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 4', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
@@ -98,12 +95,13 @@ class FastCalvoTrainer(RodanTask):
         {'name': 'Model 7', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 8', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 9', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']}
     )
 
 
     def run_my_task(self, inputs, settings, outputs):
         oldouts = sys.stdout, sys.stderr
-        if len(outputs['Log File']) > 0:
+        if 'Log File' in outputs:
             handler = logging.FileHandler(outputs['Log File'][0]['resource_path'])
             handler.setFormatter(
                 logging.Formatter('%(asctime)s - %(name)s - %(message)s')
@@ -121,50 +119,60 @@ class FastCalvoTrainer(RodanTask):
             app.log.redirect_stdouts_to_logger(logger, rlevel)
 
             # Fail if arbitrary layers are not equal before training occurs.
-            input_ports = len([x for x in inputs if x[:-1] == 'rgba PNG - Layer '])
-            output_ports = len([x for x in outputs if x[:5] == 'Model'])
-            if input_ports != output_ports:
+            input_ports = len([x for x in inputs if "Layer" in x]) 
+            output_ports = len([x for x in outputs if "Model" in x or "Log file" in x])
+            if input_ports not in [output_ports, output_ports - 1]: # So it still works if Log File is added as an output. 
                 raise Exception(
                     'The number of input layers "rgba PNG - Layers" does not match the number of'
                     ' output "Adjustable models"\n'
-                    'input_ports: %d output_ports: %d' % (input_ports, output_ports)
+                    "input_ports: " + str(input_ports) + " output_ports: " + str(output_ports)
                 )
 
             # Required input ports
             # TODO assert that all layers have the same number of inputs (otherwise it will crack afterwards)
-            number_of_training_pages = len(inputs['Image'])
-            print('\nnumber_of_training_pages:')
-            print(number_of_training_pages)
+            number_of_training_pages = len(inputs["Image"])
 
             input_images = []
             gts = []
+
+            # Create output models
+            output_models_path = {}
+
             for idx in range(number_of_training_pages):
-                input_image = cv2.imread(inputs['Image'][idx]['resource_path'], True) # 3-channel
-                background = cv2.imread(inputs['rgba PNG - Background layer'][idx]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-                regions = cv2.imread(inputs['rgba PNG - Selected regions'][idx]['resource_path'], cv2.IMREAD_UNCHANGED) # 4-channel
-                
+                input_image = cv2.imread(inputs["Image"][idx]["resource_path"], cv2.IMREAD_COLOR)  # 3-channel
+                background = cv2.imread(
+                    inputs["rgba PNG - Layer 0 (Background)"][idx]["resource_path"],
+                    cv2.IMREAD_UNCHANGED,
+                )  # 4-channel
+                regions = cv2.imread(
+                    inputs["rgba PNG - Selected regions"][idx]["resource_path"],
+                    cv2.IMREAD_UNCHANGED,
+                )  # 4-channel
+
                 # Create categorical ground-truth
                 gt = {}
-                regions_mask = (regions[:, :, 3] == 255)
-                gt['background'] = (background[:, :, 3] == 255) # background is already restricted to the selected regions (based on Pixel.js' behaviour)
-
-                # Create output models
-                output_models_path = {
-                    'background': outputs['Background Model'][0]['resource_path'],
-                }
+                TRANSPARENCY = 3
+                regions_mask = regions[:, :, TRANSPARENCY] == 255
+                # background is already restricted to the selected regions (based on Pixel.js' behaviour)
 
                 # Populate remaining inputs and outputs
-                for i in range(input_ports):
-                    file_obj = cv2.imread(inputs['rgba PNG - Layer %d' % i][idx]['resource_path'], cv2.IMREAD_UNCHANGED)
-                    file_mask = (file_obj[:, :, 3] == 255)
-                    gt['%s' % i] = np.logical_and(file_mask, regions_mask)
+                bg_mask = background[:, :, TRANSPARENCY] == 255
+                gt["0"] = np.logical_and(bg_mask, regions_mask)
+
+                for i in range(1, input_ports):
+                    file_obj = cv2.imread(
+                        inputs["rgba PNG - Layer {layer_num}".format(layer_num=i)][idx]["resource_path"],
+                        cv2.IMREAD_UNCHANGED,
+                    )
+                    file_mask = file_obj[:, :, TRANSPARENCY] == 255
+                    gt[str(i)] = np.logical_and(file_mask, regions_mask)
 
                 input_images.append(input_image)
                 gts.append(gt)
-            
-            for i in range(input_ports):
-                output_models_path['%s' % i] = outputs['Model %d' % i][0]['resource_path']
 
+            for i in range(input_ports):
+                output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"]
+                
             # Call in training function
             status = training.train_msae(
                 input_images=input_images,
@@ -178,7 +186,7 @@ class FastCalvoTrainer(RodanTask):
                 batch_size=batch_size,
             )
 
-            print('Finishing the Fast CM trainer job.')
+            print("Finishing the Fast CM trainer job.")
             return True
         finally:
             sys.stdout, sys.stderr = oldouts

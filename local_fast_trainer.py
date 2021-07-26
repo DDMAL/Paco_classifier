@@ -41,15 +41,14 @@ inputs = {
     ],
 }
 outputs = {
-    "Model 0": [{"resource_path": "Images/back.hdf5"}],
-    "Model 1": [{"resource_path": "Images/model0.hdf5"}],
-    "Log File": [{"resource_path": "Images/logfile"}],
+    "Model 0": [{"resource_path": "Images/model0.hdf5"}],
+    "Model 1": [{"resource_path": "Images/model1.hdf5"}],
+    #"Log File": [{"resource_path": "Images/logfile"}],
 }
 
-input_ports = len([x for x in inputs if "rgba PNG" in x])
-output_ports = len([x for x in outputs if "Model" in x or "Log" in x])
-int_model = input_ports - 1 # Discard Selected Regions for Model Creation
-if input_ports != output_ports:
+input_ports = len([x for x in inputs if "Layer" in x])
+output_ports = len([x for x in outputs if "Model" in x or "Log file" in x])
+if input_ports not in [output_ports, output_ports - 1]: # So it still works if Log File is added as an output. 
     raise Exception(
         'The number of input layers "rgba PNG - Layers" does not match the number of'
         ' output "Adjustable models"\n'
@@ -87,7 +86,7 @@ for idx in range(number_of_training_pages):
     bg_mask = background[:, :, TRANSPARENCY] == 255
     gt["0"] = np.logical_and(bg_mask, regions_mask)
 
-    for i in range(1, int_model):
+    for i in range(1, input_ports):
         file_obj = cv2.imread(
             inputs["rgba PNG - Layer {layer_num}".format(layer_num=i)][idx]["resource_path"],
             cv2.IMREAD_UNCHANGED,
@@ -98,7 +97,7 @@ for idx in range(number_of_training_pages):
     input_images.append(input_image)
     gts.append(gt)
 
-for i in range(int_model):
+for i in range(input_ports):
     output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"]
     # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
 
@@ -106,7 +105,7 @@ for i in range(int_model):
 status = training.train_msae(
     input_images=input_images,
     gts=gts,
-    num_labels=int_model,
+    num_labels=input_ports,
     height=patch_height,
     width=patch_width,
     output_path=output_models_path,
