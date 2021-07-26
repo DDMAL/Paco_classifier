@@ -199,16 +199,15 @@ def train_msae(
     # Create ground_truth
     print("Creating data generators...")
     generators = getTrain(input_images, gts, num_labels, height, width, batch_size)
-
     # Training loop
     for label in range(num_labels):
         print("Training a new model for label #{}".format(str(label)))
         model = get_sae(height=height, width=width)
         # model.summary()
-
+        new_output_path = os.path.join(output_path[str(label)] + '.h5')
         callbacks_list = [
             ModelCheckpoint(
-                output_path[str(label)],
+                new_output_path,
                 save_best_only=True,
                 monitor="val_accuracy",
                 verbose=1,
@@ -227,6 +226,7 @@ def train_msae(
             callbacks=callbacks_list,
             epochs=epochs,
         )
+        os.rename(new_output_path, output_path[str(label)])
 
     return 0
 

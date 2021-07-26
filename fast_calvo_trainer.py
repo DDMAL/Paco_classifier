@@ -85,6 +85,7 @@ class FastCalvoTrainer(RodanTask):
     output_port_types = (
         # We did not go this route because it would be more difficult for the user to track layers
         # {'name': 'Adjustable models', 'minimum': 1, 'maximum': 10, 'resource_types': ['keras/model+hdf5']},
+        {'name': 'Log File', 'minimum': 1, 'maximum': 1, 'resource_types': ['text/plain']},
         {'name': 'Model 0', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 1', 'minimum': 1, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 2', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
@@ -94,8 +95,7 @@ class FastCalvoTrainer(RodanTask):
         {'name': 'Model 6', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 7', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
         {'name': 'Model 8', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Model 9', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']},
-        {'name': 'Log File', 'minimum': 0, 'maximum': 1, 'resource_types': ['text/plain']}
+        {'name': 'Model 9', 'minimum': 0, 'maximum': 1, 'resource_types': ['keras/model+hdf5']}
     )
 
 
@@ -171,7 +171,7 @@ class FastCalvoTrainer(RodanTask):
                 gts.append(gt)
 
             for i in range(input_ports):
-                output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"]
+                output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"] + ".hdf5"
                 
             # Call in training function
             status = training.train_msae(
@@ -187,6 +187,8 @@ class FastCalvoTrainer(RodanTask):
             )
 
             print("Finishing the Fast CM trainer job.")
+            for i in range(input_ports):
+                os.rename(output_models_path[str(i)], outputs["Model " + str(i)][0]["resource_path"])
             return True
         finally:
             sys.stdout, sys.stderr = oldouts
