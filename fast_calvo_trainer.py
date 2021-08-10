@@ -132,14 +132,13 @@ class FastCalvoTrainer(RodanTask):
             # TODO assert that all layers have the same number of inputs (otherwise it will crack afterwards)
             number_of_training_pages = len(inputs["Image"])
 
-            input_images = []
+            list_path_images = []
             gts = []
 
             # Create output models
             output_models_path = {}
 
             for idx in range(number_of_training_pages):
-                input_image = cv2.imread(inputs["Image"][idx]["resource_path"], cv2.IMREAD_COLOR)  # 3-channel
                 background = cv2.imread(
                     inputs["rgba PNG - Layer 0 (Background)"][idx]["resource_path"],
                     cv2.IMREAD_UNCHANGED,
@@ -167,7 +166,7 @@ class FastCalvoTrainer(RodanTask):
                     file_mask = file_obj[:, :, TRANSPARENCY] == 255
                     gt[str(i)] = np.logical_and(file_mask, regions_mask)
 
-                input_images.append(input_image)
+                list_path_images.append(inputs["Image"][idx]["resource_path"])
                 gts.append(gt)
 
             for i in range(input_ports):
@@ -175,7 +174,7 @@ class FastCalvoTrainer(RodanTask):
                 
             # Call in training function
             status = training.train_msae(
-                input_images=input_images,
+                list_path_images=list_path_images,
                 gts=gts,
                 num_labels=input_ports,
                 height=patch_height,

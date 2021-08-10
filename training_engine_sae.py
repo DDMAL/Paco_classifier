@@ -10,7 +10,7 @@ from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.backend import image_data_format
-import keras
+#import keras
 import tensorflow as tf
 import threading
 
@@ -129,11 +129,12 @@ def threadsafe_generator(f):
 
 
 @threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGenerator(input_images, segmented_images, idx_label, patch_height, patch_width, batch_size):
+def createGenerator(list_path_images, segmented_images, idx_label, patch_height, patch_width, batch_size):
     while True:
 
-        selected_page_idx = np.random.randint(len(input_images))  # Changed len to grs from gr
-        gr = input_images[selected_page_idx]
+        selected_page_idx = np.random.randint(len(list_path_images))  # Changed len to grs from gr
+        gr = cv2.imread(list_path_images[selected_page_idx], cv2.IMREAD_COLOR)  # 3-channel
+
         label = str(idx_label)
         gt = segmented_images[selected_page_idx][label]
 
@@ -169,14 +170,14 @@ def createGenerator(input_images, segmented_images, idx_label, patch_height, pat
         yield gr_chunks_arr, gt_chunks_arr  # convert into npy before yielding
 
 
-def getTrain(input_images, gts, num_labels, patch_height, patch_width, batch_size):
+def getTrain(list_path_images, gts, num_labels, patch_height, patch_width, batch_size):
     generator_labels = []
 
     print("num_labels", num_labels)
     for idx_label in range(num_labels):
         print("idx_label", idx_label)
         generator_label = createGenerator(
-            input_images, gts, idx_label, patch_height, patch_width, batch_size
+            list_path_images, gts, idx_label, patch_height, patch_width, batch_size
         )
         generator_labels.append(generator_label)
         print(generator_labels)
@@ -185,7 +186,7 @@ def getTrain(input_images, gts, num_labels, patch_height, patch_width, batch_siz
 
 
 def train_msae(
-    input_images,
+    list_path_images,
     gts,
     num_labels,
     height,
@@ -198,7 +199,7 @@ def train_msae(
 
     # Create ground_truth
     print("Creating data generators...")
-    generators = getTrain(input_images, gts, num_labels, height, width, batch_size)
+    generators = getTrain(list_path_images, gts, num_labels, height, width, batch_size)
     # Training loop
     for label in range(num_labels):
         print("Training a new model for label #{}".format(str(label)))
