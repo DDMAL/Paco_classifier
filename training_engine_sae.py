@@ -27,8 +27,17 @@ import threading
 # keras.backend.tensorflow_backend.set_session(sess)
 VALIDATION_SPLIT = 0.2
 # BATCH_SIZE = 16
+# ===========================
+
 
 # ===========================
+#       CONSTANTS
+# ===========================
+KEY_BACKGROUND_LAYER = "rgba PNG - Layer 0 (Background)"
+KEY_SELECTED_REGIONS = "rgba PNG - Selected regions"
+KEY_RESOURCE_PATH = "resource_path"
+# ===========================
+
 class threadsafe_iter:
     """Takes an iterator/generator and makes it thread-safe by
     serializing call to the `next` method of given iterator/generator.
@@ -128,15 +137,65 @@ def threadsafe_generator(f):
     return g
 
 
+def load_gt_image(path_file, regions_mask):
+    file_obj = cv2.imread(path_file, cv2.IMREAD_UNCHANGED,)  # 4-channel
+    
+    TRANSPARENCY = 3
+    # Populate remaining inputs and outputs
+    bg_mask = file_obj[:, :, TRANSPARENCY] == 255
+    return np.logical_and(bg_mask, regions_mask)
+
+
+
+def get_image_with_gt(inputs, idx_file, idx_label):
+
+    # Required input ports
+    # TODO assert that all layers have the same number of inputs (otherwise it will crack afterwards)
+    number_of_training_pages = len(inputs["Image"])
+    if idx_file >= number_of_training_pages : # If we try to access to an non-existing layer 
+        raise Exception(
+            'The index of the file does not exist\n'
+            "input images: " + str(number_of_training_pages) + " index acceded: " + str(idx_file)
+        )
+
+    regions = cv2.imread(
+            inputs[KEY_SELECTED_REGIONS][idx_file][KEY_RESOURCE_PATH],
+            cv2.IMREAD_UNCHANGED,
+        )  # 4-channel
+
+    # Create categorical ground-truth
+    TRANSPARENCY = 3
+    regions_mask = regions[:, :, TRANSPARENCY] == 255
+    
+    if idx_label == 0:
+        gt = load_gt_image(inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH], regions_mask)
+
+    else:
+        
+        input_ports = len([x for x in inputs if "Layer" in x])
+        if idx_label > input_ports : # If we try to access to an non-existing layer 
+            raise Exception(
+                'The index of the layer does not exist\n'
+                "input_ports: " + str(input_ports) + " index acceded: " + str(idx_label)
+            )
+
+        gt = load_gt_image(inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH], regions_mask)
+        
+
+    gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
+
+    return gr, gt
+
+        
 @threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGenerator(list_path_images, segmented_images, idx_label, patch_height, patch_width, batch_size):
+def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size):
+    number_of_training_pages = len(inputs["Image"])
+
     while True:
 
-        selected_page_idx = np.random.randint(len(list_path_images))  # Changed len to grs from gr
-        gr = cv2.imread(list_path_images[selected_page_idx], cv2.IMREAD_COLOR)  # 3-channel
+        idx_file = np.random.randint(number_of_training_pages)  # Changed len to grs from gr
 
-        label = str(idx_label)
-        gt = segmented_images[selected_page_idx][label]
+        gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
 
         potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
 
@@ -170,14 +229,14 @@ def createGenerator(list_path_images, segmented_images, idx_label, patch_height,
         yield gr_chunks_arr, gt_chunks_arr  # convert into npy before yielding
 
 
-def getTrain(list_path_images, gts, num_labels, patch_height, patch_width, batch_size):
+def getTrain(inputs, num_labels, patch_height, patch_width, batch_size):
     generator_labels = []
 
     print("num_labels", num_labels)
     for idx_label in range(num_labels):
         print("idx_label", idx_label)
         generator_label = createGenerator(
-            list_path_images, gts, idx_label, patch_height, patch_width, batch_size
+            inputs, idx_label, patch_height, patch_width, batch_size
         )
         generator_labels.append(generator_label)
         print(generator_labels)
@@ -185,9 +244,10 @@ def getTrain(list_path_images, gts, num_labels, patch_height, patch_width, batch
     return generator_labels
 
 
+
+
 def train_msae(
-    list_path_images,
-    gts,
+    inputs,
     num_labels,
     height,
     width,
@@ -199,7 +259,7 @@ def train_msae(
 
     # Create ground_truth
     print("Creating data generators...")
-    generators = getTrain(list_path_images, gts, num_labels, height, width, batch_size)
+    generators = getTrain(inputs, num_labels, height, width, batch_size)
     # Training loop
     for label in range(num_labels):
         print("Training a new model for label #{}".format(str(label)))

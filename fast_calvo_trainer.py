@@ -128,54 +128,15 @@ class FastCalvoTrainer(RodanTask):
                     "input_ports: " + str(input_ports) + " output_ports: " + str(output_ports)
                 )
 
-            # Required input ports
-            # TODO assert that all layers have the same number of inputs (otherwise it will crack afterwards)
-            number_of_training_pages = len(inputs["Image"])
-
-            list_path_images = []
-            gts = []
-
             # Create output models
             output_models_path = {}
-
-            for idx in range(number_of_training_pages):
-                background = cv2.imread(
-                    inputs["rgba PNG - Layer 0 (Background)"][idx]["resource_path"],
-                    cv2.IMREAD_UNCHANGED,
-                )  # 4-channel
-                regions = cv2.imread(
-                    inputs["rgba PNG - Selected regions"][idx]["resource_path"],
-                    cv2.IMREAD_UNCHANGED,
-                )  # 4-channel
-
-                # Create categorical ground-truth
-                gt = {}
-                TRANSPARENCY = 3
-                regions_mask = regions[:, :, TRANSPARENCY] == 255
-                # background is already restricted to the selected regions (based on Pixel.js' behaviour)
-
-                # Populate remaining inputs and outputs
-                bg_mask = background[:, :, TRANSPARENCY] == 255
-                gt["0"] = np.logical_and(bg_mask, regions_mask)
-
-                for i in range(1, input_ports):
-                    file_obj = cv2.imread(
-                        inputs["rgba PNG - Layer {layer_num}".format(layer_num=i)][idx]["resource_path"],
-                        cv2.IMREAD_UNCHANGED,
-                    )
-                    file_mask = file_obj[:, :, TRANSPARENCY] == 255
-                    gt[str(i)] = np.logical_and(file_mask, regions_mask)
-
-                list_path_images.append(inputs["Image"][idx]["resource_path"])
-                gts.append(gt)
 
             for i in range(input_ports):
                 output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"] + ".hdf5"
                 
             # Call in training function
             status = training.train_msae(
-                list_path_images=list_path_images,
-                gts=gts,
+                inputs=inputs,
                 num_labels=input_ports,
                 height=patch_height,
                 width=patch_width,
