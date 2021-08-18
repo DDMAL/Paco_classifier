@@ -136,15 +136,17 @@ def threadsafe_generator(f):
 
     return g
 
-
-def load_gt_image(path_file, regions_mask):
+#Load a Ground-truth image and apply the region mask if it is given
+def load_gt_image(path_file, regions_mask=None):
     file_obj = cv2.imread(path_file, cv2.IMREAD_UNCHANGED,)  # 4-channel
     
     TRANSPARENCY = 3
-    # Populate remaining inputs and outputs
     bg_mask = file_obj[:, :, TRANSPARENCY] == 255
-    return np.logical_and(bg_mask, regions_mask)
-
+    
+    if regions_mask is not None:
+        return np.logical_and(bg_mask, regions_mask)
+    else:
+        return bg_mask
 
 
 def get_image_with_gt(inputs, idx_file, idx_label):
@@ -158,20 +160,11 @@ def get_image_with_gt(inputs, idx_file, idx_label):
             "input images: " + str(number_of_training_pages) + " index acceded: " + str(idx_file)
         )
 
-    regions = cv2.imread(
-            inputs[KEY_SELECTED_REGIONS][idx_file][KEY_RESOURCE_PATH],
-            cv2.IMREAD_UNCHANGED,
-        )  # 4-channel
-
-    # Create categorical ground-truth
-    TRANSPARENCY = 3
-    regions_mask = regions[:, :, TRANSPARENCY] == 255
+    regions_mask = load_gt_image(inputs[KEY_SELECTED_REGIONS][idx_file][KEY_RESOURCE_PATH])
     
     if idx_label == 0:
-        gt = load_gt_image(inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH], regions_mask)
-
+        gt_path_file = inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH]
     else:
-        
         input_ports = len([x for x in inputs if "Layer" in x])
         if idx_label > input_ports : # If we try to access to an non-existing layer 
             raise Exception(
@@ -179,9 +172,9 @@ def get_image_with_gt(inputs, idx_file, idx_label):
                 "input_ports: " + str(input_ports) + " index acceded: " + str(idx_label)
             )
 
-        gt = load_gt_image(inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH], regions_mask)
-        
+        gt_path_file = inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH]
 
+    gt = load_gt_image(gt_path_file, regions_mask)
     gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
 
     return gr, gt
