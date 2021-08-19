@@ -166,7 +166,7 @@ def get_image_with_gt(inputs, idx_file, idx_label):
         gt_path_file = inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH]
     else:
         input_ports = len([x for x in inputs if "Layer" in x])
-        if idx_label > input_ports : # If we try to access to an non-existing layer 
+        if idx_label >= input_ports : # If we try to access to an non-existing layer 
             raise Exception(
                 'The index of the layer does not exist\n'
                 "input_ports: " + str(input_ports) + " index acceded: " + str(idx_label)
