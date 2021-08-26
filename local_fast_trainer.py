@@ -27,9 +27,10 @@ patch_height = 32
 patch_width = 256
 max_number_of_epochs = 1
 max_samples_per_class = 100
-
+training_mode = training.TrainingMode.SHUFFLE
 
 # Fail if arbitrary layers are not equal before training occurs.
+
 
 inputs = {
     "Image": [{"resource_path": "Images/Halifax_Folio_42v.png"}],
@@ -71,6 +72,7 @@ status = training.train_msae(
     height=patch_height,
     width=patch_width,
     output_path=output_models_path,
+    training_mode=training_mode,
     epochs=max_number_of_epochs,
     max_samples_per_class=max_samples_per_class,
     batch_size=batch_size,

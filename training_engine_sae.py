@@ -13,7 +13,14 @@ from tensorflow.keras.backend import image_data_format
 #import keras
 import tensorflow as tf
 import threading
+from enum import Enum
 
+
+class TrainingMode(Enum):
+    RANDOM,     \
+    SHUFFLE,    \
+    DEFAULT     \
+    = range(3)
 
 # ===========================
 #       SETTINGS
@@ -179,57 +186,102 @@ def get_image_with_gt(inputs, idx_file, idx_label):
 
     return gr, gt
 
-        
+
+
+def createGeneratorSingleFile(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
+    gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
+
+    potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
+
+    gr_chunks = []
+    gt_chunks = []
+
+    num_coords = len(potential_training_examples[0])
+
+    index_coords_selected = [
+        np.random.randint(0, num_coords) for _ in range(batch_size)
+    ]
+    x_coords = potential_training_examples[0][index_coords_selected]
+    y_coords = potential_training_examples[1][index_coords_selected]
+
+    for i in range(batch_size):
+        row = x_coords[i]
+        col = y_coords[i]
+        gr_sample = gr[
+            row : row + patch_height, col : col + patch_width
+        ]  # Greyscale image
+        gt_sample = gt[
+            row : row + patch_height, col : col + patch_width
+        ]  # Ground truth
+        gr_chunks.append(gr_sample)
+        gt_chunks.append(gt_sample)
+
+    gr_chunks_arr = np.array(gr_chunks)
+    gt_chunks_arr = np.array(gt_chunks)
+    # convert gr_chunks and gt_chunks to the numpy arrays that are yield below
+
+    return gr_chunks_arr, gt_chunks_arr  # convert into npy before yielding
+
+
 @threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size):
+def createGeneratorDefault(inputs, idx_label, patch_height, patch_width, batch_size):
+    print("Creating default generator...")
+    
+    number_of_training_pages = len(inputs["Image"])
+
+    while True:
+        for idx_file in range(number_of_training_pages):
+            yield createGeneratorSingleFile(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+
+@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
+def createGeneratorShuffle(inputs, idx_label, patch_height, patch_width, batch_size):
+    print("Creating shuffle generator...")
+    
+    list_shuffle_idx_files = list(range(len(inputs["Image"])))
+        
+    while True:
+        rd.shuffle(list_shuffle_idx_files)
+
+        for idx_file in list_shuffle_idx_files:
+            yield createGeneratorSingleFile(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+
+@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
+def createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_size):
+    print("Creating random generator...")
+
     number_of_training_pages = len(inputs["Image"])
 
     while True:
 
         idx_file = np.random.randint(number_of_training_pages)  # Changed len to grs from gr
-
-        gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
-
-        potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
-
-        gr_chunks = []
-        gt_chunks = []
-
-        num_coords = len(potential_training_examples[0])
-
-        index_coords_selected = [
-            np.random.randint(0, num_coords) for _ in range(batch_size)
-        ]
-        x_coords = potential_training_examples[0][index_coords_selected]
-        y_coords = potential_training_examples[1][index_coords_selected]
-
-        for i in range(batch_size):
-            row = x_coords[i]
-            col = y_coords[i]
-            gr_sample = gr[
-                row : row + patch_height, col : col + patch_width
-            ]  # Greyscale image
-            gt_sample = gt[
-                row : row + patch_height, col : col + patch_width
-            ]  # Ground truth
-            gr_chunks.append(gr_sample)
-            gt_chunks.append(gt_sample)
-
-        gr_chunks_arr = np.array(gr_chunks)
-        gt_chunks_arr = np.array(gt_chunks)
-        # convert gr_chunks and gt_chunks to the numpy arrays that are yield below
-
-        yield gr_chunks_arr, gt_chunks_arr  # convert into npy before yielding
+        yield createGeneratorSingleFile(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
 
 
-def getTrain(inputs, num_labels, patch_height, patch_width, batch_size):
+
+@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
+def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size, training_mode):
+    
+    if training_mode == TrainingMode.DEFAULT:
+        return createGeneratorDefault(inputs, idx_label, patch_height, patch_width, batch_size)
+    elif training_mode == TrainingMode.SHUFFLE:
+        return createGeneratorShuffle(inputs, idx_label, patch_height, patch_width, batch_size)
+    elif training_mode == TrainingMode.RANDOM:
+        return createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_size)
+    else:
+        raise Exception(
+            'The training mode does not exist.\n'
+        ) 
+
+
+
+def getTrain(inputs, num_labels, patch_height, patch_width, batch_size, training_mode):
     generator_labels = []
 
     print("num_labels", num_labels)
     for idx_label in range(num_labels):
         print("idx_label", idx_label)
         generator_label = createGenerator(
-            inputs, idx_label, patch_height, patch_width, batch_size
+            inputs, idx_label, patch_height, patch_width, batch_size, training_mode
         )
         generator_labels.append(generator_label)
         print(generator_labels)
@@ -245,6 +297,7 @@ def train_msae(
     height,
     width,
     output_path,
+    training_mode,
     epochs,
     max_samples_per_class,
     batch_size=16,
@@ -252,7 +305,7 @@ def train_msae(
 
     # Create ground_truth
     print("Creating data generators...")
-    generators = getTrain(inputs, num_labels, height, width, batch_size)
+    generators = getTrain(inputs, num_labels, height, width, batch_size, training_mode)
     # Training loop
     for label in range(num_labels):
         print("Training a new model for label #{}".format(str(label)))

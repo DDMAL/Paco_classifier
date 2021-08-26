@@ -115,6 +115,9 @@ class FastCalvoTrainer(RodanTask):
             max_number_of_epochs = settings['Maximum number of training epochs']
             max_samples_per_class = settings['Maximum number of samples per label']
 
+            #TODO Include the training mode in the configuration
+            training_mode = training.TrainingMode.SHUFFLE 
+
             rlevel = app.conf.CELERY_REDIRECT_STDOUTS_LEVEL
             app.log.redirect_stdouts_to_logger(logger, rlevel)
 
@@ -141,6 +144,7 @@ class FastCalvoTrainer(RodanTask):
                 height=patch_height,
                 width=patch_width,
                 output_path=output_models_path,
+                training_mode=training_mode,
                 epochs=max_number_of_epochs,
                 max_samples_per_class=max_samples_per_class,
                 batch_size=batch_size,
