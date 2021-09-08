@@ -15,18 +15,36 @@ import tensorflow as tf
 import threading
 from enum import Enum
 
-
 class FileSelectionMode(Enum):
     RANDOM,     \
     SHUFFLE,    \
     DEFAULT     \
     = range(3)
 
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def from_string(s):
+        try:
+            return FileSelectionMode[s]
+        except KeyError:
+            raise ValueError()
 
 class SampleExtractionMode(Enum):
     RANDOM,     \
     SEQUENTIAL  \
     = range(2)
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def from_string(s):
+        try:
+            return SampleExtractionMode[s]
+        except KeyError:
+            raise ValueError()
 
 # ===========================
 #       SETTINGS
@@ -152,7 +170,12 @@ def threadsafe_generator(f):
 #Load a Ground-truth image and apply the region mask if it is given
 def load_gt_image(path_file, regions_mask=None):
     file_obj = cv2.imread(path_file, cv2.IMREAD_UNCHANGED,)  # 4-channel
-    
+    if file_obj is None : 
+        raise Exception(
+            'It is not possible to load the image\n'
+            "Path: " + str(path_file)
+        )
+
     TRANSPARENCY = 3
     bg_mask = file_obj[:, :, TRANSPARENCY] == 255
     
@@ -382,10 +405,10 @@ def get_number_samples_sequential(inputs, patch_height, patch_width):
 
     return number_samples
 
-def get_steps_per_epoch(inputs, max_samples_per_class, patch_height, patch_width, batch_size, sample_extraction_mode):
+def get_steps_per_epoch(inputs, number_samples_per_class, patch_height, patch_width, batch_size, sample_extraction_mode):
 
     if sample_extraction_mode == SampleExtractionMode.RANDOM:
-        return max_samples_per_class // batch_size
+        return number_samples_per_class // batch_size
     elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
         return get_number_samples_sequential(inputs, patch_height, patch_width)
     else:
@@ -404,7 +427,7 @@ def train_msae(
     file_selection_mode,
     sample_extraction_mode,
     epochs,
-    max_samples_per_class,
+    number_samples_per_class,
     batch_size=16,
 ):
 
@@ -430,7 +453,7 @@ def train_msae(
             EarlyStopping(monitor="val_accuracy", patience=3, verbose=0, mode="max"),
         ]
 
-        steps_per_epoch = get_steps_per_epoch(inputs, max_samples_per_class, height, width, batch_size, sample_extraction_mode)
+        steps_per_epoch = get_steps_per_epoch(inputs, number_samples_per_class, height, width, batch_size, sample_extraction_mode)
 
         # Training stage
         model.fit(

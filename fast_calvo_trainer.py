@@ -113,7 +113,7 @@ class FastCalvoTrainer(RodanTask):
             patch_height = settings['Patch height']
             patch_width = settings['Patch width']
             max_number_of_epochs = settings['Maximum number of training epochs']
-            max_samples_per_class = settings['Maximum number of samples per label']
+            number_samples_per_class = settings['Maximum number of samples per label']
 
             #------------------------------------------------------------
             #TODO Include the training options in the configuration data
@@ -150,7 +150,7 @@ class FastCalvoTrainer(RodanTask):
                 file_selection_mode=file_selection_mode,
                 sample_extraction_mode=sample_extraction_mode,
                 epochs=max_number_of_epochs,
-                max_samples_per_class=max_samples_per_class,
+                number_samples_per_class=number_samples_per_class,
                 batch_size=batch_size,
             )
 
