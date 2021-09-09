@@ -102,3 +102,25 @@ Within that script, there are a set of parameters with an example of use. Each o
   * **FILE_SELECTION_MODE**="SHUFFLE"  
   * **SAMPLE_EXTRACTION_MODE**="RANDOM"  
 
+
+**IMPORTANT**: Currently, these scripts require that the data have a specific folder structure. It is necessary to have a folder for images, another for the region masks, another for the background layer, and an additional folder for each layer different to the background. For example:
+
+  - **datasets** `Parent folder.`
+    - **images** `Folder for images.`
+    - **regions** `Folder for the region masks.`
+    - **background** `Folder for the background layer.`
+    - **staff** `Folder for the staff layer.`
+    - **neume** `Folder for the neume notation layer.`
+
+With this structure, each image have exactly the same name of the associated data in each folder. For example, if there is an image with the name **image_01.png**, the structure should be:
+  - **datasets**
+    - **images** 
+      - image_01.png
+    - **regions**
+      - image_01.png
+    - **background**
+      - image_01.png
+    - **staff**
+      - image_01.png
+    - **neume**
+      - image_01.png
