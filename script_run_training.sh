@@ -5,9 +5,9 @@
 #----------------------------------------------------------------------------------
 PATH_IMAGES="datasets/images"               #Folder with the images
 PATH_REGIONS="datasets/regions"             #Folder with the mask regions
-PATH_BACKGROUND="datasets/layers/bg"
+PATH_BACKGROUND="datasets/layers/bg"        #Folder with the background ground-truth data.
 PATH_LAYERS=("datasets/layers/staff" "datasets/layers/neumes")                          #List of folders of ground-truth data for each layer
-OUTPUT_MODEL=("Images/model0.hdf5" "Images/model1.hdf5" "Images/model2.hdf5")           #List of paths for the output models
+OUTPUT_MODEL=("Models/model0.hdf5" "Models/model1.hdf5" "Models/model2.hdf5")           #List of paths for the output models
 WINDOW_WIDTH=64                             #Width of the window to extract samples
 WINDOW_HEIGHT=64                            #Height of the window to extract samples
 BATCH_SIZE=8                                #Batch size
