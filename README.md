@@ -63,22 +63,22 @@ Both are ready for receiving different parameters.
   
   Note that the parameters * **-pgt** and **-out** receive lists of paths. When using **fast_calvo_easy_training.py**, multiple elements in these lists have to be provided by repeating the parameter name before each element. For example:
 
-  python -u fast_calvo_easy_training.py
-                    -psr   datasets/images
-                    -prg   datasets/regions
-                    -pbg   datasets/layers/bg
-                    -pgt datasets/layers/staff
-                    -pgt datasets/layers/neumes
-                    -out Models/model_background.hdf5
-                    -out Models/model_staff.hdf5
-                    -out Models/model_neumes.hdf5
-                    -width 256
-                    -height 256
-                    -b 8
-                    -e 50
-                    -n 1000
-                    -fm SHUFFLE
-                    -sm RANDOM
+  python -u fast_calvo_easy_training.py 
+                    -psr   datasets/images 
+                    -prg   datasets/regions 
+                    -pbg   datasets/layers/bg 
+                    -pgt datasets/layers/staff 
+                    -pgt datasets/layers/neumes 
+                    -out Models/model_background.hdf5 
+                    -out Models/model_staff.hdf5 
+                    -out Models/model_neumes.hdf5 
+                    -width 256 
+                    -height 256 
+                    -b 8 
+                    -e 50 
+                    -n 1000 
+                    -fm SHUFFLE 
+                    -sm RANDOM 
 
 When using **script_run_training.sh**, in console only it is necessary to run the script:
 ~~~
@@ -87,17 +87,17 @@ When using **script_run_training.sh**, in console only it is necessary to run th
 
 Within that script, there are a set of parameters with an example of use. Each one of these variables matches with a parameter of the python code.
 
-**PATH_IMAGES**="datasets/images"
-**PATH_REGIONS**="datasets/regions"
-**PATH_BACKGROUND**="datasets/layers/bg"
-**PATH_LAYERS**=("datasets/layers/staff" "datasets/layers/neumes")                          
-**OUTPUT_MODEL**=("Models/model_background.hdf5" "Models/model_staff.hdf5" "Models/model_neumes.hdf5")           
-**WINDOW_WIDTH**=256
-**WINDOW_HEIGHT**=256
-**BATCH_SIZE**=8
-**MAX_EPOCHS**=50
-**NUMBER_SAMPLES_PER_CLASS**=1000
-**FILE_SELECTION_MODE**="SHUFFLE"
-**SAMPLE_EXTRACTION_MODE**="RANDOM"
+**PATH_IMAGES**="datasets/images" 
+**PATH_REGIONS**="datasets/regions" 
+**PATH_BACKGROUND**="datasets/layers/bg" 
+**PATH_LAYERS**=("datasets/layers/staff" "datasets/layers/neumes") 
+**OUTPUT_MODEL**=("Models/model_background.hdf5" "Models/model_staff.hdf5" "Models/model_neumes.hdf5") 
+**WINDOW_WIDTH**=256 
+**WINDOW_HEIGHT**=256 
+**BATCH_SIZE**=8 
+**MAX_EPOCHS**=50 
+**NUMBER_SAMPLES_PER_CLASS**=1000 
+**FILE_SELECTION_MODE**="SHUFFLE" 
+**SAMPLE_EXTRACTION_MODE**="RANDOM" 
 
 
