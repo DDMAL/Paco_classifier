@@ -1,24 +1,22 @@
 #!/bin/bash
 
-#python -u py_dasae.py -path datasets -db1 sal -db2 dibco2016 -s 128 -l 5 -f 128 -gpu 0
-#python -u py_dasae.py -path datasets -db1 dibco2016 -db2 palm0
-#exit
-
-#gpu=0
-
-PATH_IMAGES="datasets/images"
-PATH_REGIONS="datasets/regions"
+#----------------------------------------------------------------------------------
+#                               PARAMETERS:
+#----------------------------------------------------------------------------------
+PATH_IMAGES="datasets/images"               #Folder with the images
+PATH_REGIONS="datasets/regions"             #Folder with the mask regions
 PATH_BACKGROUND="datasets/layers/bg"
-PATH_LAYERS=("datasets/layers/staff" "datasets/layers/neumes")
-OUTPUT_MODEL=("Images/model0.hdf5" "Images/model1.hdf5" "Images/model2.hdf5")
-WINDOW_WIDTH=64
-WINDOW_HEIGHT=64
-BATCH_SIZE=8
-MAX_EPOCHS=5
-NUMBER_SAMPLES_PER_CLASS=100
-FILE_SELECTION_MODE="SHUFFLE"
-SAMPLE_EXTRACTION_MODE="RANDOM"
+PATH_LAYERS=("datasets/layers/staff" "datasets/layers/neumes")                          #List of folders of ground-truth data for each layer
+OUTPUT_MODEL=("Images/model0.hdf5" "Images/model1.hdf5" "Images/model2.hdf5")           #List of paths for the output models
+WINDOW_WIDTH=64                             #Width of the window to extract samples
+WINDOW_HEIGHT=64                            #Height of the window to extract samples
+BATCH_SIZE=8                                #Batch size
+MAX_EPOCHS=5                                #Maximum number of epochs to be considered. The model will stop before if the the training process does not improve the results.
+NUMBER_SAMPLES_PER_CLASS=100                #Number of samples to be extracted for each layer.
+FILE_SELECTION_MODE="SHUFFLE"               #Mode of the selection of the files in the training process. [RANDOM, SHUFFLE, DEFAULT]
+SAMPLE_EXTRACTION_MODE="RANDOM"             #Mode of extraction of samples. [RANDOM, SEQUENTIAL]
 
+#----------------------------------------------------------------------------------
 
 PARAM_PATH_LAYERS=""
 for i in "${PATH_LAYERS[@]}" ; do
