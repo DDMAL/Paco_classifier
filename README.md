@@ -51,17 +51,17 @@ Both are ready for receiving different parameters.
   * **-psr** `Path to the folder with the original images.`
   * **-prg** `Path to the folder with the mask regions.`
   * **-pbg** `Path to the folder with the background ground-truth data.`
-  * **-pgt** `List of folders of ground-truth data for each layer (different to background).`
-  * **-out** `List of paths for the output models.`
+  * **-pgt** `A repeatable option for a path to the folder with ground-truth data for each layer (other than background).`
+  * **-out** `A repeteable option for a path for the output model for each layer (including the background).`
   * **-width** `Width of the window to extract samples.`
   * **-height** `Height of the window to extract samples`
   * **-b** `Batch size`
   * **-e** `Maximum number of epochs to be considered. The model will stop before if the the training process does not improve the results.`
   * **-n** `Number of samples to be extracted for each layer.`
-  * **-fm** `Mode of the selection of the files in the training process. Possible values: [RANDOM, SHUFFLE, DEFAULT]`
-  * **-sm** `Mode of extraction of samples. Possible values: [RANDOM, SEQUENTIAL]`
+  * **-fm** `Mode of the selection of the files in the training process. Possible values: [RANDOM, SHUFFLE, SEQUENTIAL] (Default: SHUFFLE)`
+  * **-sm** `Mode of extraction of samples. Possible values: [RANDOM, SEQUENTIAL] (Default: RANDOM)`
   
-Note that the parameters **-pgt** and **-out** receive lists of paths. When using **fast_calvo_easy_training.py**, multiple elements in these lists have to be provided by repeating the parameter name before each element. For example:
+Note that the parameters **-pgt** and **-out** indicate the path to the folders containing respective files and the number of the paths of both parameters must be the same. For example:
 
 ~~~
   python -u fast_calvo_easy_training.py  
@@ -110,17 +110,23 @@ Within that script, there are a set of parameters with an example of use. Each o
     - **regions** `Folder for the region masks.`
     - **background** `Folder for the background layer.`
     - **staff** `Folder for the staff layer.`
-    - **neume** `Folder for the neume notation layer.`
+    - **neume** `Folder for the neume notation layer.
+    - **layer_x** `Folder for the x layer, etc.`
 
 With this structure, each image have exactly the same name of the associated data in each folder. For example, if there is an image with the name **image_01.png**, the structure should be:
   - **datasets**
     - **images** 
       - image_01.png
+      - example_99.png
     - **regions**
       - image_01.png
+      - example_99.png
     - **background**
       - image_01.png
+      - example_99.png
     - **staff**
       - image_01.png
+      - example_99.png
     - **neume**
       - image_01.png
+      - example_99.png
