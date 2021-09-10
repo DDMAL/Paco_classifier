@@ -48,20 +48,22 @@ There are two options:
   * Through the script **script_run_training.sh**. The parameters should be provided within this script, by modifying the corresponding values.
 
 Both are ready for receiving different parameters.
-  * **-psr** `Path to the folder with the original images.`
-  * **-prg** `Path to the folder with the mask regions.`
-  * **-pbg** `Path to the folder with the background ground-truth data.`
-  * **-pgt** `A repeatable option for a path to the folder with ground-truth data for each layer (other than background).`
-  * **-out** `A repeteable option for a path for the output model for each layer (including the background).`
-  * **-width** `Width of the window to extract samples.`
-  * **-height** `Height of the window to extract samples`
-  * **-b** `Batch size`
-  * **-e** `Maximum number of epochs to be considered. The model will stop before if the the training process does not improve the results.`
-  * **-n** `Number of samples to be extracted for each layer.`
-  * **-fm** `Mode of the selection of the files in the training process. Possible values: [RANDOM, SHUFFLE, SEQUENTIAL] (Default: SHUFFLE)`
-  * **-sm** `Mode of extraction of samples. Possible values: [RANDOM, SEQUENTIAL] (Default: RANDOM)`
+  * **-psr** `Path to the folder with the original images.` (**Default:** *datasets/images*)
+  * **-prg** `Path to the folder with the mask regions.` (**Default:** *datasets/regions*)
+  * **-pbg** `Path to the folder with the background ground-truth data.` (**Default:** *datasets/layers/background*)
+  * **-pgt** `A repeatable option for a path to the folder with ground-truth data for each layer (other than background).` (**Default:** *datasets/layers/staff*  *datasets/layers/neumes*)
+  * **-out** `A repeteable option for a path for the output model for each layer including the background.` (**Default:** *Models/model_background.hdf5*   *Models/model_staff.hdf5*  *Models/model_neumes.hdf5*)
+  * **-width** `Width of the window to extract samples.` (**Default:** *256*)
+  * **-height** `Height of the window to extract samples` (**Default:** *256*)
+  * **-b** `Batch size` (**Default:** *8*)
+  * **-e** `Maximum number of epochs to be considered. The model will stop before if the the training process does not improve the results.` (**Default:** *50*)
+  * **-n** `Number of samples to be extracted for each layer.` (**Default:** *1000*)
+  * **-fm** `Mode of the selection of the files in the training process. Possible values: [RANDOM, SHUFFLE, SEQUENTIAL].` (**Default:** *SHUFFLE*)
+  * **-sm** `Mode of extraction of samples. Possible values: [RANDOM, SEQUENTIAL].` (**Default:** *RANDOM*)
   
-Note that the parameters **-pgt** and **-out** indicate the path to the folders containing respective files and the number of the paths of both parameters must be the same. For example:
+Note that the parameters **-pgt** and **-out** are repeteable options. For including more layers, these two parameters have to be repeated one time for each layer to provide the corresponding paths. Note also that the **-out** parameter indicates the paths in which each trained model will be saved. So that, the number of paths provided with the parameter **-out** must match with the number of path folders provided for each layer, including the background one. 
+
+If you have 3 layers (background, staff, neumes), you have to provide the path folder to the background data with **-pbg**, the path folders to the data of the rest of layers through **-pgt** (parameter repeated for each additional layer) and the output path for the trained models for each layer, being the background model the first one, and the rest of output paths matching with the different layers provided by **-pgt**, considering the order in which they were provided. For example:
 
 ~~~
   python -u fast_calvo_easy_training.py  
@@ -91,7 +93,7 @@ Within that script, there are a set of parameters with an example of use. Each o
 
   * **PATH_IMAGES**="datasets/images"  
   * **PATH_REGIONS**="datasets/regions"  
-  * **PATH_BACKGROUND**="datasets/layers/bg"  
+  * **PATH_BACKGROUND**="datasets/layers/background"  
   * **PATH_LAYERS**=("datasets/layers/staff" "datasets/layers/neumes")  
   * **OUTPUT_MODEL**=("Models/model_background.hdf5" "Models/model_staff.hdf5" "Models/model_neumes.hdf5")  
   * **WINDOW_WIDTH**=256  
@@ -110,10 +112,10 @@ Within that script, there are a set of parameters with an example of use. Each o
     - **regions** `Folder for the region masks.`
     - **background** `Folder for the background layer.`
     - **staff** `Folder for the staff layer.`
-    - **neume** `Folder for the neume notation layer.
-    - **layer_x** `Folder for the x layer, etc.`
+    - **neume** `Folder for the neume notation layer.`
+    - **layer_x** `Folder for the x-th layer, etc.`
 
-With this structure, each image have exactly the same name of the associated data in each folder. For example, if there is an image with the name **image_01.png**, the structure should be:
+With this structure, each image have exactly the same name of the associated data in each folder. For example:
   - **datasets**
     - **images** 
       - image_01.png
