@@ -318,7 +318,7 @@ def createGeneratorDefault(inputs, idx_label, patch_height, patch_width, batch_s
             if sample_extraction_mode == SampleExtractionMode.RANDOM:
                 yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
             elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                yield from createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+                yield createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
             else:
                 raise Exception(
                     'The sample extraction mode does not exist.\n'
@@ -338,7 +338,7 @@ def createGeneratorShuffle(inputs, idx_label, patch_height, patch_width, batch_s
             if sample_extraction_mode == SampleExtractionMode.RANDOM:
                 yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
             elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                yield from createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+                yield createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
             else:
                 raise Exception(
                     'The sample extraction mode does not exist.\n'
@@ -355,7 +355,7 @@ def createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_si
         if sample_extraction_mode == SampleExtractionMode.RANDOM:
             yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
         elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-            yield from createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+            yield createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
         else:
             raise Exception(
                 'The sample extraction mode does not exist.\n'
