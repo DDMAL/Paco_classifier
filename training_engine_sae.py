@@ -6,7 +6,7 @@ import random as rd
 import os
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.backend import image_data_format
@@ -14,6 +14,8 @@ from tensorflow.keras.backend import image_data_format
 import tensorflow as tf
 import threading
 from enum import Enum
+
+kPIXEL_VALUE_FOR_MASKING = -100
 
 class FileSelectionMode(Enum):
     RANDOM,     \
@@ -97,9 +99,11 @@ def get_sae(height, width, pretrained_weights=None):
     ff = 32
 
     inputs = Input(shape=get_input_shape(height, width))
+    mask = Masking(mask_value=kPIXEL_VALUE_FOR_MASKING)(inputs)
+
     conv1 = Conv2D(
         ff, 3, activation="relu", padding="same", kernel_initializer="he_normal"
-    )(inputs)
+    )(mask)
     conv1 = Conv2D(
         ff, 3, activation="relu", padding="same", kernel_initializer="he_normal"
     )(conv1)
@@ -177,10 +181,13 @@ def load_gt_image(path_file, regions_mask=None):
         )
 
     TRANSPARENCY = 3
-    bg_mask = file_obj[:, :, TRANSPARENCY] == 255
+    bg_mask = (file_obj[:, :, TRANSPARENCY] == 255)
     
     if regions_mask is not None:
-        return np.logical_and(bg_mask, regions_mask)
+        masked = np.logical_and(bg_mask, regions_mask) * 1.0
+        l = np.where((regions_mask == 0))
+        masked[l] = kPIXEL_VALUE_FOR_MASKING
+        return masked
     else:
         return bg_mask
 
