@@ -13,14 +13,7 @@ If you're running it in a Rodan container, this will be located in code/Rodan/ro
 If the container is already running, try `docker exec -it [container_name] bash` to run the script without
 stopping.
 """
-
-import logging
-import os
-import sys
-import cv2
-import numpy as np
 import training_engine_sae as training
-import pdb
 
 batch_size = 1
 patch_height = 32
@@ -76,7 +69,7 @@ status = training.train_msae(
     file_selection_mode=file_selection_mode,
     sample_extraction_mode=sample_extraction_mode,
     epochs=max_number_of_epochs,
-    max_samples_per_class=max_samples_per_class,
+    number_samples_per_class=max_samples_per_class,
     batch_size=batch_size,
 )
 

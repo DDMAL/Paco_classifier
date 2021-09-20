@@ -31,43 +31,48 @@ KEY_BACKGROUND_LAYER = "rgba PNG - Layer 0 (Background)"
 KEY_SELECTED_REGIONS = "rgba PNG - Selected regions"
 KEY_RESOURCE_PATH = "resource_path"
 
-kBATCH_SIZE_DEFAULT = 1
-kPATCH_HEIGHT_DEFAULT = 32
-kPATCH_WIDTH_DEFAULT = 32
-kMAX_NUMBER_OF_EPOCHS_DEFAULT = 1
-kNUMBER_SAMPLES_PER_CLASS_DEFAULT = 100
+kPATH_IMAGES_DEFAULT = "datasets/images"
+kPATH_REGION_MASKS_DEFAULT = "datasets/regions"
+kPATH_BACKGROUND_DEFAULT = "datasets/layers/background"
+kPATH_LAYERS_DEFAULT = ["datasets/layers/staff", "datasets/layers/neumes"]
+kPATH_OUTPUT_MODELS_DEFAULT = ["Models/model_background.hdf5", "Models/model_staff.hdf5", "Models/model_neumes.hdf5"]
+kBATCH_SIZE_DEFAULT = 8
+kPATCH_HEIGHT_DEFAULT = 256
+kPATCH_WIDTH_DEFAULT = 256
+kMAX_NUMBER_OF_EPOCHS_DEFAULT = 50
+kNUMBER_SAMPLES_PER_CLASS_DEFAULT = 1000
 kFILE_SELECTION_MODE_DEFAULT = training.FileSelectionMode.SHUFFLE
 kSAMPLE_EXTRACTION_MODE_DEFAULT = training.SampleExtractionMode.RANDOM
 # ===========================
 
 
 def menu():
-    parser = argparse.ArgumentParser(description='Easy fast trainer')
+    parser = argparse.ArgumentParser(description='Fast trainer')
 
     parser.add_argument(
                     '-psr',  
-                    required=True,   
+                    default=kPATH_IMAGES_DEFAULT, 
                     dest='path_src', 
                     help='Path of the source folder that contains the original images.'
                     )
 
     parser.add_argument(
                     '-prg',  
-                    required=True,   
+                    default=kPATH_REGION_MASKS_DEFAULT,
                     dest='path_regions', 
                     help='Path of the folder that contains the region masks.'
                     )
 
     parser.add_argument(
                     '-pbg',  
-                    required=True,   
+                    default=kPATH_BACKGROUND_DEFAULT,
                     dest='path_bg', 
                     help='Path of the folder with the background layer data.'
                     )
 
     parser.add_argument(
                     '-pgt',
-                    required=True,   
+                    default=kPATH_LAYERS_DEFAULT,
                     dest='path_layer', 
                     help='Paths of the ground-truth folders to be considered (one per layer).', 
                     action='append'
@@ -75,7 +80,7 @@ def menu():
     
     parser.add_argument(
                     '-out',
-                    required=True,   
+                    default=kPATH_OUTPUT_MODELS_DEFAULT,
                     dest='path_out', 
                     help='Paths for the models saved after the training.', 
                     action='append'
