@@ -72,7 +72,6 @@ def menu():
 
     parser.add_argument(
                     '-pgt',
-                    default=kPATH_LAYERS_DEFAULT,
                     dest='path_layer', 
                     help='Paths of the ground-truth folders to be considered (one per layer).', 
                     action='append'
@@ -80,7 +79,6 @@ def menu():
     
     parser.add_argument(
                     '-out',
-                    default=kPATH_OUTPUT_MODELS_DEFAULT,
                     dest='path_out', 
                     help='Paths for the models saved after the training.', 
                     action='append'
@@ -145,6 +143,10 @@ def menu():
                     )
 
     args = parser.parse_args()
+
+    args.path_layer = args.path_layer if args.path_layer is not None else kPATH_LAYERS_DEFAULT
+    args.path_out = args.path_out if args.path_out is not None else kPATH_OUTPUT_MODELS_DEFAULT
+    
 
     print('CONFIG:\n -', str(args).replace('Namespace(','').replace(')','').replace(', ', '\n - '))
 
