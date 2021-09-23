@@ -13,7 +13,7 @@ If you're running it in a Rodan container, this will be located in code/Rodan/ro
 If the container is already running, try `docker exec -it [container_name] bash` to run the script without
 stopping.
 """
-from fast_trainer_lib.py import CalvoTrainer
+from fast_trainer_lib import CalvoTrainer
 
 def main():
 
