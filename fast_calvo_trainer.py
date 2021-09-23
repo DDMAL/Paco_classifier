@@ -16,6 +16,7 @@ import numpy as np
 # Project
 from rodan.celery import app
 from rodan.jobs.base import RodanTask
+from . import training_engine_sae as training
 from rodan.jobs.Calvo_classifier.fast_trainer_lib import CalvoTrainer
 
 
@@ -131,7 +132,7 @@ class FastCalvoTrainer(RodanTask):
                 patch_height,
                 patch_width,
                 max_number_of_epochs,
-                max_samples_per_class,
+                number_samples_per_class,
                 file_selection_mode,
                 sample_extraction_mode,
                 inputs,
