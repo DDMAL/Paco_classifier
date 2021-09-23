@@ -53,7 +53,7 @@ def main():
         max_number_of_epochs,
         max_samples_per_class,
         file_selection_mode,
-        sample_extraction_mocde,
+        sample_extraction_mode,
         inputs,
         outputs,
     )
