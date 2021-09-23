@@ -62,10 +62,10 @@ class CalvoTrainer:
         # Call in training function
         status = training.train_msae(
             inputs=self.inputs,
-            num_labels=self.input_ports,
+            num_labels=input_ports,
             height=self.patch_height,
             width=self.patch_width,
-            output_path=self.output_models_path,
+            output_path=output_models_path,
             file_selection_mode=self.file_selection_mode,
             sample_extraction_mode=self.sample_extraction_mode,
             epochs=self.max_number_of_epochs,
