@@ -14,66 +14,52 @@ If the container is already running, try `docker exec -it [container_name] bash`
 stopping.
 """
 import training_engine_sae as training
+from fast_trainer_lib import CalvoTrainer
 
-batch_size = 1
-patch_height = 32
-patch_width = 256
-max_number_of_epochs = 1
-max_samples_per_class = 100
-file_selection_mode = training.FileSelectionMode.SHUFFLE
-sample_extraction_mode = training.SampleExtractionMode.RANDOM
+def main():
 
-# Fail if arbitrary layers are not equal before training occurs.
+    batch_size = 1
+    patch_height = 32
+    patch_width = 256
+    max_number_of_epochs = 1
+    max_samples_per_class = 100
+    file_selection_mode = training.FileSelectionMode.SHUFFLE
+    sample_extraction_mode = training.SampleExtractionMode.RANDOM
 
-inputs = {
-    "Image": [{"resource_path": "Images/Halifax_Folio_42v.png"}],
-    "rgba PNG - Layer 0 (Background)": [
-        {"resource_path": "Images/042v_BackgroundForNeumes.png"}
-    ],
-    "rgba PNG - Layer 1": [{"resource_path": "Images/042v_Neumes.png"}],
-    "rgba PNG - Selected regions": [
-        {"resource_path": "Images/042v_SelectedRegion.png"}
-    ],
-}
+    # Fail if arbitrary layers are not equal before training occurs.
+
+    inputs = {
+        "Image": [{"resource_path": "Images/Halifax_Folio_42v.png"}],
+        "rgba PNG - Layer 0 (Background)": [
+            {"resource_path": "Images/042v_BackgroundForNeumes.png"}
+        ],
+        "rgba PNG - Layer 1": [{"resource_path": "Images/042v_Neumes.png"}],
+        "rgba PNG - Selected regions": [
+            {"resource_path": "Images/042v_SelectedRegion.png"}
+        ],
+    }
 
 
-outputs = {
-    "Model 0": [{"resource_path": "Images/model0.hdf5"}],
-    "Model 1": [{"resource_path": "Images/model1.hdf5"}],
-    #"Log File": [{"resource_path": "Images/logfile"}],
-}
+    outputs = {
+        "Model 0": [{"resource_path": "Images/model0.hdf5"}],
+        "Model 1": [{"resource_path": "Images/model1.hdf5"}],
+        #"Log File": [{"resource_path": "Images/logfile"}],
+    }
 
-input_ports = len([x for x in inputs if "Layer" in x])
-output_ports = len([x for x in outputs if "Model" in x or "Log file" in x])
-if input_ports not in [output_ports, output_ports - 1]: # So it still works if Log File is added as an output. 
-    raise Exception(
-        'The number of input layers "rgba PNG - Layers" does not match the number of'
-        ' output "Adjustable models"\n'
-        "input_ports: " + str(input_ports) + " output_ports: " + str(output_ports)
+    trainer = CalvoTrainer(
+        batch_size,
+        patch_height,
+        patch_width,
+        max_number_of_epochs,
+        max_samples_per_class,
+        file_selection_mode,
+        sample_extraction_mode,
+        inputs,
+        outputs,
     )
 
-# Create output models
-output_models_path = {}
-
-for i in range(input_ports):
-    output_models_path[str(i)] = outputs["Model " + str(i)][0]["resource_path"]
-    # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
-
-# Call in training function
-status = training.train_msae(
-    inputs=inputs,
-    num_labels=input_ports,
-    height=patch_height,
-    width=patch_width,
-    output_path=output_models_path,
-    file_selection_mode=file_selection_mode,
-    sample_extraction_mode=sample_extraction_mode,
-    epochs=max_number_of_epochs,
-    number_samples_per_class=max_samples_per_class,
-    batch_size=batch_size,
-)
-
-# THIS IS ONLY CREATING THE MODEL 0 FILE!!!!!!
-print("Finishing the Fast CM trainer job.")
+    trainer.runTrainer()
 
 
+if __name__ == "__main__":
+    main()
