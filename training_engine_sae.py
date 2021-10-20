@@ -448,7 +448,7 @@ def train_msae(
         print("Training a new model for label #{}".format(str(label)))
         model = get_sae(height=height, width=width)
         # model.summary()
-        new_output_path = os.path.join(output_path[str(label)] + '.h5')
+        new_output_path = os.path.join(output_path[str(label)])
         callbacks_list = [
             ModelCheckpoint(
                 new_output_path,
