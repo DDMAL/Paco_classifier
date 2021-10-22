@@ -58,6 +58,7 @@ Both are ready for receiving different parameters.
   * **-b** `Batch size` (**Default:** *8*)
   * **-e** `Maximum number of epochs to be considered. The model will stop before if the the training process does not improve the results.` (**Default:** *50*)
   * **-n** `Number of samples to be extracted for each layer.` (**Default:** *1000*)
+  * **-pat** `Number of consecutive epochs allowed without improvement. The training is stopped if the model does not improve this number of consecutive epochs.` (**Default:** *15*)
   * **-fm** `Mode of the selection of the files in the training process. Possible values: [RANDOM, SHUFFLE, SEQUENTIAL].` (**Default:** *SHUFFLE*)
   * **-sm** `Mode of extraction of samples. Possible values: [RANDOM, SEQUENTIAL].` (**Default:** *RANDOM*)
   
@@ -80,6 +81,7 @@ If you have 3 layers (background, staff, neumes), you have to provide the path f
             -b 8  
             -e 50  
             -n 1000  
+            -pat 15  
             -fm SHUFFLE  
             -sm RANDOM  
 ~~~
@@ -101,6 +103,7 @@ Within that script, there are a set of parameters with an example of use. Each o
   * **BATCH_SIZE**=8  
   * **MAX_EPOCHS**=50  
   * **NUMBER_SAMPLES_PER_CLASS**=1000  
+  * **PATIENCE**=15  
   * **FILE_SELECTION_MODE**="SHUFFLE"  
   * **SAMPLE_EXTRACTION_MODE**="RANDOM"  
 
@@ -123,12 +126,13 @@ With this structure, each image have exactly the same name of the associated dat
     - **regions**
       - image_01.png
       - example_99.png
-    - **background**
-      - image_01.png
-      - example_99.png
-    - **staff**
-      - image_01.png
-      - example_99.png
-    - **neume**
-      - image_01.png
-      - example_99.png
+    - **layers**
+      - **background**
+        - image_01.png
+        - example_99.png
+      - **staff**
+        - image_01.png
+        - example_99.png
+      - **neume**
+        - image_01.png
+        - example_99.png
