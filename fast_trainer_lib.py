@@ -60,7 +60,7 @@ class CalvoTrainer:
             # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
 
         # Call in training function
-        status = training.train_msae(
+        status = training.train_msae( # TODO: Including patience parameter for early stopping
             inputs=self.inputs,
             num_labels=input_ports,
             height=self.patch_height,
@@ -70,7 +70,7 @@ class CalvoTrainer:
             sample_extraction_mode=self.sample_extraction_mode,
             epochs=self.max_number_of_epochs,
             number_samples_per_class=self.max_samples_per_class,
-            batch_size=self.batch_size,
+            batch_size=self.batch_size
         )
         print("Finishing the Fast CM trainer job.")
         for i in range(input_ports):

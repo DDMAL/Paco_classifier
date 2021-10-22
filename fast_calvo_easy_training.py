@@ -41,6 +41,7 @@ kPATCH_HEIGHT_DEFAULT = 256
 kPATCH_WIDTH_DEFAULT = 256
 kMAX_NUMBER_OF_EPOCHS_DEFAULT = 50
 kNUMBER_SAMPLES_PER_CLASS_DEFAULT = 1000
+kEARLY_STOPPING_PATIENCE_DEFAULT = 15
 kFILE_SELECTION_MODE_DEFAULT = training.FileSelectionMode.SHUFFLE
 kSAMPLE_EXTRACTION_MODE_DEFAULT = training.SampleExtractionMode.RANDOM
 # ===========================
@@ -140,6 +141,14 @@ def menu():
                     type=training.SampleExtractionMode.from_string, 
                     choices=list(training.SampleExtractionMode), 
                     help='Mode of extracing samples for each image in the training process'
+                    )
+
+    parser.add_argument(
+                    '-pat',
+                    default=kEARLY_STOPPING_PATIENCE_DEFAULT,
+                    dest='patience',
+                    type=int,
+                    help='Number of epochs of patience for the early stopping. If the model does not improves the training results in this number of consecutive epochs, the training is stopped.'
                     )
 
     args = parser.parse_args()
@@ -276,6 +285,7 @@ status = training.train_msae(
     epochs=config.max_epochs,
     number_samples_per_class=config.number_samples_per_class,
     batch_size=config.batch_size,
+    patience=config.patience
 )
 
 # THIS IS ONLY CREATING THE MODEL 0 FILE!!!!!!
