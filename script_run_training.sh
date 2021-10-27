@@ -13,6 +13,7 @@ WINDOW_HEIGHT=256                               #Height of the window to extract
 BATCH_SIZE=8                                    #Batch size
 MAX_EPOCHS=50                                   #Maximum number of epochs to be considered. The model will stop before if the the training process does not improve the results.
 NUMBER_SAMPLES_PER_CLASS=1000                   #Number of samples to be extracted for each layer.
+PATIENCE=15                                     #Number of consecutive epochs allowed without improvement. The training is stopped if the model does not improve this number of consecutive epochs. 
 FILE_SELECTION_MODE="SHUFFLE"                   #Mode of the selection of the files in the training process. [RANDOM, SHUFFLE, DEFAULT]
 SAMPLE_EXTRACTION_MODE="RANDOM"                 #Mode of extraction of samples. [RANDOM, SEQUENTIAL]
 
@@ -42,5 +43,6 @@ python -u fast_calvo_easy_training.py \
                     -b ${BATCH_SIZE} \
                     -e ${MAX_EPOCHS} \
                     -n ${NUMBER_SAMPLES_PER_CLASS} \
+                    -pat ${PATIENCE} \
                     -fm ${FILE_SELECTION_MODE} \
                     -sm ${SAMPLE_EXTRACTION_MODE}

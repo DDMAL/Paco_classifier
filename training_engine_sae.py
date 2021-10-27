@@ -436,6 +436,7 @@ def train_msae(
     epochs,
     number_samples_per_class,
     batch_size=16,
+    patience=15
 ):
 
     # Create ground_truth
@@ -457,7 +458,7 @@ def train_msae(
                 verbose=1,
                 mode="max",
             ),
-            EarlyStopping(monitor="val_accuracy", patience=3, verbose=0, mode="max"),
+            EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
         ]
 
         steps_per_epoch = get_steps_per_epoch(inputs, number_samples_per_class, height, width, batch_size, sample_extraction_mode)
