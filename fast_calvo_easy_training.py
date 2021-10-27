@@ -275,7 +275,7 @@ status = training.train_msae(
     sample_extraction_mode=config.sample_extraction_mode,
     epochs=config.max_epochs,
     number_samples_per_class=config.number_samples_per_class,
-    batch_size=config.batch_size,
+    batch_size=config.batch_size
 )
 
 # THIS IS ONLY CREATING THE MODEL 0 FILE!!!!!!

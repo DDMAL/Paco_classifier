@@ -470,7 +470,7 @@ def train_msae(
             validation_data=generators_validation[label],
             validation_steps=100,
             callbacks=callbacks_list,
-            epochs=epochs,
+            epochs=epochs
         )
         os.rename(new_output_path, output_path[str(label)])
 
