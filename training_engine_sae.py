@@ -15,7 +15,7 @@ import tensorflow as tf
 import threading
 from enum import Enum
 
-kPIXEL_VALUE_FOR_MASKING = -100
+kPIXEL_VALUE_FOR_MASKING = -1
 
 class FileSelectionMode(Enum):
     RANDOM,     \
@@ -184,9 +184,7 @@ def load_gt_image(path_file, regions_mask=None):
     bg_mask = (file_obj[:, :, TRANSPARENCY] == 255)
     
     if regions_mask is not None:
-        masked = np.logical_and(bg_mask, regions_mask) * 1.0
-        l = np.where((regions_mask == 0))
-        masked[l] = kPIXEL_VALUE_FOR_MASKING
+        masked = np.logical_and(bg_mask, regions_mask)
         return masked
     else:
         return bg_mask
@@ -219,6 +217,11 @@ def get_image_with_gt(inputs, idx_file, idx_label):
 
     gt = load_gt_image(gt_path_file, regions_mask)
     gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
+    gr = (255.-gr) / 255.
+
+    #Deactivate the training process for pixels outside the region mask
+    l = np.where((regions_mask == 0))
+    gr[l] = kPIXEL_VALUE_FOR_MASKING
 
     return gr, gt
 
@@ -257,13 +260,8 @@ def createGeneratorSingleFileSequentialExtraction(inputs, idx_file, idx_label, r
 
 
 
-def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
-
+def extractRandomSamplesClass(gr, gt, idx_class, patch_height, patch_width, batch_size, gr_chunks, gt_chunks):
     potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
-
-    gr_chunks = []
-    gt_chunks = []
 
     num_coords = len(potential_training_examples[0])
 
@@ -277,6 +275,19 @@ def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width,
         row = x_coords[i]
         col = y_coords[i]
         appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks)
+
+
+def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
+    gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
+
+    
+    gr_chunks = []
+    gt_chunks = []
+
+    num_samples_with_layer = batch_size // 2
+
+    extractRandomSamplesClass(gr, gt, 1, patch_height, patch_width, num_samples_with_layer, gr_chunks, gt_chunks)
+    extractRandomSamplesClass(gr, gt, 0, patch_height, patch_width, batch_size-num_samples_with_layer, gr_chunks, gt_chunks)
 
     gr_chunks_arr = np.array(gr_chunks)
     gt_chunks_arr = np.array(gt_chunks)
@@ -325,7 +336,7 @@ def createGeneratorDefault(inputs, idx_label, patch_height, patch_width, batch_s
             if sample_extraction_mode == SampleExtractionMode.RANDOM:
                 yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
             elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                yield createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+                yield from createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
             else:
                 raise Exception(
                     'The sample extraction mode does not exist.\n'
@@ -345,7 +356,7 @@ def createGeneratorShuffle(inputs, idx_label, patch_height, patch_width, batch_s
             if sample_extraction_mode == SampleExtractionMode.RANDOM:
                 yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
             elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                yield createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+                yield from createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
             else:
                 raise Exception(
                     'The sample extraction mode does not exist.\n'
@@ -362,7 +373,7 @@ def createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_si
         if sample_extraction_mode == SampleExtractionMode.RANDOM:
             yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
         elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-            yield createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
+            yield from createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size)
         else:
             raise Exception(
                 'The sample extraction mode does not exist.\n'
@@ -417,7 +428,7 @@ def get_steps_per_epoch(inputs, number_samples_per_class, patch_height, patch_wi
     if sample_extraction_mode == SampleExtractionMode.RANDOM:
         return number_samples_per_class // batch_size
     elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-        return get_number_samples_sequential(inputs, patch_height, patch_width)
+        return get_number_samples_sequential(inputs, patch_height, patch_width) // batch_size
     else:
         raise Exception(
             'The sample extraction mode does not exist.\n'
@@ -473,6 +484,7 @@ def train_msae(
             callbacks=callbacks_list,
             epochs=epochs
         )
+        
         os.rename(new_output_path, output_path[str(label)])
 
     return 0
