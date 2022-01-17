@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import random as rd
 import os
+import copy
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking
@@ -189,6 +190,23 @@ def load_gt_image(path_file, regions_mask=None):
     else:
         return bg_mask
 
+def get_gt_image_and_regions(inputs, idx_label, idx_file):
+    regions_mask = load_gt_image(inputs[KEY_SELECTED_REGIONS][idx_file][KEY_RESOURCE_PATH])
+
+    if idx_label == 0:
+        gt_path_file = inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH]
+    else:
+        input_ports = len([x for x in inputs if "Layer" in x])
+        if idx_label >= input_ports : # If we try to access to an non-existing layer 
+            raise Exception(
+                'The index of the layer does not exist\n'
+                "input_ports: " + str(input_ports) + " index acceded: " + str(idx_label)
+            )
+
+        gt_path_file = inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH]
+        
+    gt = load_gt_image(gt_path_file, regions_mask)
+    return gt, regions_mask
 
 def get_image_with_gt(inputs, idx_file, idx_label):
 
@@ -201,21 +219,7 @@ def get_image_with_gt(inputs, idx_file, idx_label):
             "input images: " + str(number_of_training_pages) + " index acceded: " + str(idx_file)
         )
 
-    regions_mask = load_gt_image(inputs[KEY_SELECTED_REGIONS][idx_file][KEY_RESOURCE_PATH])
-    
-    if idx_label == 0:
-        gt_path_file = inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH]
-    else:
-        input_ports = len([x for x in inputs if "Layer" in x])
-        if idx_label >= input_ports : # If we try to access to an non-existing layer 
-            raise Exception(
-                'The index of the layer does not exist\n'
-                "input_ports: " + str(input_ports) + " index acceded: " + str(idx_label)
-            )
-
-        gt_path_file = inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH]
-
-    gt = load_gt_image(gt_path_file, regions_mask)
+    gt, regions_mask = get_gt_image_and_regions(inputs, idx_label, idx_file)
     gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
     gr = (255.-gr) / 255.
 
@@ -265,11 +269,21 @@ def extractRandomSamplesClass(gr, gt, idx_class, patch_height, patch_width, batc
 
     num_coords = len(potential_training_examples[0])
 
-    index_coords_selected = [
-        np.random.randint(0, num_coords) for _ in range(batch_size)
-    ]
-    x_coords = potential_training_examples[0][index_coords_selected]
-    y_coords = potential_training_examples[1][index_coords_selected]
+    if num_coords >= batch_size:
+
+        index_coords_selected = [
+            np.random.randint(0, num_coords) for _ in range(batch_size)
+        ]
+        x_coords = potential_training_examples[0][index_coords_selected]
+        y_coords = potential_training_examples[1][index_coords_selected]
+    else:
+        x_coords = [
+            np.random.randint(0, gr.shape[0]) for _ in range(batch_size)
+        ]
+
+        y_coords = [
+            np.random.randint(0, gr.shape[1]) for _ in range(batch_size)
+        ]
 
     for i in range(batch_size):
         row = x_coords[i]
@@ -380,16 +394,28 @@ def createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_si
             )
 
 
+def deleteImagesWith(inputs, idx_label):
+    for idx_file in range(len(inputs["Image"])-1, -1, -1):
+        
+        gt, _ = get_gt_image_and_regions(inputs, idx_label, idx_file)
+
+        if (np.sum(gt) == 0):
+            inputs["Image"].pop(idx_file)
+            inputs[KEY_SELECTED_REGIONS].pop(idx_file)
+            inputs[KEY_BACKGROUND_LAYER].pop(idx_file)
+    return inputs
 
 @threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
 def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode):
-    
+    inputs_copy = copy.deepcopy(inputs)
+    inputs_copy = deleteImagesWith(inputs_copy, idx_label)
+
     if file_selection_mode == FileSelectionMode.DEFAULT:
-        return createGeneratorDefault(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+        return createGeneratorDefault(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
     elif file_selection_mode == FileSelectionMode.SHUFFLE:
-        return createGeneratorShuffle(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+        return createGeneratorShuffle(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
     elif file_selection_mode == FileSelectionMode.RANDOM:
-        return createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+        return createGeneratorRandom(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
     else:
         raise Exception(
             'The file extraction mode does not exist.\n'
