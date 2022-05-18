@@ -163,7 +163,7 @@ class FastCalvoClassifier(RodanTask):
 
                 # Process
                 image_filepath = inputs['Image'][idx]['resource_path']
-                image = cv2.imread(image_filepath, True)
+                image = cv2.imread(image_filepath, 1)
                 analyses = recognition.process_image_msae(image, model_paths, height, width, mode = mode)
 
                 for id_label, _ in enumerate(model_paths):
