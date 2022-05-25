@@ -1,4 +1,4 @@
-# Calvo-classifier
+# Paco_classifier
 
 Repository of the Rodan wrapper for Calvo classifier
 
