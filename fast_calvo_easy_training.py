@@ -24,6 +24,7 @@ import numpy as np
 import training_engine_sae as training
 import pdb
 import argparse
+from input_settings_test import pre_training_check
 
 
 # ===========================
@@ -258,6 +259,8 @@ config = menu()
 inputs = init_input_dictionary(config)
 outputs = init_output_dictionary(config)
 
+# Sanity check
+pre_training_check(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
 
 input_ports = len([x for x in inputs if "Layer" in x])
 output_ports = len([x for x in outputs if "Model" in x or "Log file" in x])
