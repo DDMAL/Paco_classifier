@@ -106,7 +106,10 @@ Within that script, there are a set of parameters with an example of use. Each o
   * **SAMPLE_EXTRACTION_MODE**="RANDOM"  
 
 
-**IMPORTANT**: Currently, these scripts require that the data have a specific folder structure. It is necessary to have a folder for images, another for the region masks, another for the background layer, and an additional folder for each layer different to the background. For example:
+**IMPORTANT**: 
+**NUMBER_SAMPLES_PER_CLASS** cannot be smaller than **BATCH_SIZE**. The image width cannot be smaller than **WINDOW_WIDTH** and similarly, the image height cannot be smaller than **WINDOW_HEIGHT**. Ground truth portions of layers have to be fully opaque and have alpha channel value of 255 (`img[:, :, TRANSPARENCY] == 255`). Any image that contains 0 fully opaque pixel will be removed from the training set. Exception will be thrown if all images of a layer are empty.  
+  
+Currently, these scripts require that the data have a specific folder structure. It is necessary to have a folder for images, another for the region masks, another for the background layer, and an additional folder for each layer different to the background. For example:
 
   - **datasets** `Parent folder.`
     - **images** `Folder for images.`
@@ -134,3 +137,4 @@ With this structure, each image have exactly the same name of the associated dat
       - **neume**
         - image_01.png
         - example_99.png
+
