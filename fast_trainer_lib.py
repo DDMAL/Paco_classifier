@@ -12,7 +12,7 @@ import numpy as np
 try:
     import training_engine_sae as training
 except Exception:
-    import rodan.jobs.Calvo_classifier.training_engine_sae as training
+    import rodan.jobs.Paco_classifier.training_engine_sae as training
 
 
 class CalvoTrainer:
@@ -56,7 +56,8 @@ class CalvoTrainer:
         output_models_path = {}
 
         for i in range(input_ports):
-            output_models_path[str(i)] = self.outputs["Model " + str(i)][0]["resource_path"]
+            # ADDED .hdf5 to fix Rodan bug not recognizing output
+            output_models_path[str(i)] = "{}.hdf5".format(self.outputs["Model " + str(i)][0]["resource_path"])
             # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
 
         # Call in training function

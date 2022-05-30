@@ -16,6 +16,8 @@ import tensorflow as tf
 import threading
 from enum import Enum
 
+import logging
+
 kPIXEL_VALUE_FOR_MASKING = -1
 
 class FileSelectionMode(Enum):
@@ -509,7 +511,7 @@ def train_msae(
             verbose=2,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
-            validation_steps=100,
+            validation_steps=1,
             callbacks=callbacks_list,
             epochs=epochs
         )

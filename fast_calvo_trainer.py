@@ -17,7 +17,7 @@ import numpy as np
 from rodan.celery import app
 from rodan.jobs.base import RodanTask
 from . import training_engine_sae as training
-from rodan.jobs.Calvo_classifier.fast_trainer_lib import CalvoTrainer
+from rodan.jobs.Paco_classifier.fast_trainer_lib import CalvoTrainer
 
 
 """Wrap Patchwise (Fast) Calvo classifier training in Rodan."""
@@ -40,7 +40,7 @@ class FastCalvoTrainer(RodanTask):
             'Batch Size': {
                 'type': 'integer',
                 'minimum': 1,
-                'default': 16,
+                'default': 8,
                 'maximum': 64,
             },
             'Maximum number of training epochs': {
@@ -50,8 +50,8 @@ class FastCalvoTrainer(RodanTask):
             },
             'Maximum number of samples per label': {
                 'type': 'integer',
-                'minimum': 100,
-                'default': 2000
+                'minimum': 1,
+                'default': 1000
             },            
             'Patch height': {
                 'type': 'integer',

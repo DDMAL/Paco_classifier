@@ -25,7 +25,7 @@ from . import recognition_engine as recognition
 """Wrap Fast Calvo classifier in Rodan."""
 
 logger = get_task_logger(__name__)
-
+# logger = get_task_logger('rodan')
 
 class FastCalvoClassifier(RodanTask):
     name = "Fast Pixelwise Analysis of Music Document"
