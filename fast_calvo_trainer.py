@@ -12,6 +12,8 @@ import sys
 from celery.utils.log import get_task_logger
 import cv2
 import numpy as np
+import zipfile
+from shutil import rmtree
 
 # Project
 from rodan.celery import app
@@ -69,20 +71,20 @@ class FastCalvoTrainer(RodanTask):
     }
 
     input_port_types = (
-        {'name': 'Image', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgb+png','image/rgb+jpg']},
-        {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'Image', 'minimum': 1, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Selected regions', 'minimum': 1, 'maximum': 1, 'resource_types': ['application/zip']},
         # We did not go this route because it would be more difficult for the user to track layers
         # {'name': 'rgba PNG - Layers', 'minimum': 1, 'maximum': 10, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 0 (Background)', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 1', 'minimum': 1, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 2', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 3', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 4', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 5', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 6', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 7', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 8', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
-        {'name': 'rgba PNG - Layer 9', 'minimum': 0, 'maximum': 5, 'resource_types': ['image/rgba+png']},
+        {'name': 'rgba PNG - Layer 0 (Background)', 'minimum': 1, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 1', 'minimum': 1, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 2', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 3', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 4', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 5', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 6', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 7', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 8', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
+        {'name': 'rgba PNG - Layer 9', 'minimum': 0, 'maximum': 1, 'resource_types': ['application/zip']},
     )
 
     output_port_types = (
@@ -124,8 +126,21 @@ class FastCalvoTrainer(RodanTask):
             sample_extraction_mode = training.SampleExtractionMode.RANDOM
             #------------------------------------------------------------
 
+            # Unzip zip files into dictionary of images
+            if os.path.exists('unzipping_folder'):
+                rmtree('unzipping_folder')
+            os.mkdir('unzipping_folder')
+            new_input = {}
+            for ipt in inputs:
+                dir_path = 'unzipping_folder/{}'.format(ipt)
+                with zipfile.ZipFile(inputs[ipt][0]['resource_path'], 'r') as zip_ref:
+                    zip_ref.extractall(dir_path)
+                full_path = os.path.join(os.getcwd(), dir_path)
+                onlyfiles = [{'resource_path': os.path.join(full_path, f)} for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
+                new_input[ipt] = onlyfiles
+
             # SANITY CHECK
-            input_settings_test.pre_training_check(inputs, batch_size, patch_height, patch_width, number_samples_per_class)
+            input_settings_test.pre_training_check(new_input, batch_size, patch_height, patch_width, number_samples_per_class)
 
             rlevel = app.conf.CELERY_REDIRECT_STDOUTS_LEVEL
             app.log.redirect_stdouts_to_logger(logger, rlevel)
@@ -139,10 +154,16 @@ class FastCalvoTrainer(RodanTask):
                 number_samples_per_class,
                 file_selection_mode,
                 sample_extraction_mode,
-                inputs,
+                # CHANGED HERE FOR UNZIP
+                new_input,
                 outputs,
             )
             trainer.runTrainer()
+
+            # REMOVE UNZIP FOLDER
+            if os.path.exists('unzipping_folder'):
+                rmtree('unzipping_folder')
+
             return True
         finally:
             sys.stdout, sys.stderr = oldouts

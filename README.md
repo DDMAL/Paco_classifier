@@ -137,4 +137,3 @@ With this structure, each image have exactly the same name of the associated dat
       - **neume**
         - image_01.png
         - example_99.png
-
