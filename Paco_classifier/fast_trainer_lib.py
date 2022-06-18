@@ -3,17 +3,14 @@ This file provides the code for model generation.
 Can be used in the standalone file or within Rodan.
 """
 
-import logging
 import os
+import logging
 import sys
+
 import cv2
 import numpy as np
 
-try:
-    import training_engine_sae as training
-except Exception:
-    import rodan.jobs.Paco_classifier.training_engine_sae as training
-
+from . import training_engine_sae as training
 
 class CalvoTrainer:
     def __init__(

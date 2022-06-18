@@ -21,10 +21,10 @@ import sys
 print (sys.path)
 import cv2
 import numpy as np
-import training_engine_sae as training
+import Paco_classifier.training_engine_sae as training
 import pdb
 import argparse
-from input_settings_test import pre_training_check
+from Paco_classifier.input_settings_test import pre_training_check
 
 
 # ===========================

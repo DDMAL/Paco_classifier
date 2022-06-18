@@ -1,22 +1,20 @@
 from __future__ import division
+import os
+import copy
+import threading
+from enum import Enum
+import logging
 
 import cv2
 import numpy as np
 import random as rd
-import os
-import copy
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.backend import image_data_format
-#import keras
 import tensorflow as tf
-import threading
-from enum import Enum
-
-import logging
 
 kPIXEL_VALUE_FOR_MASKING = -1
 
