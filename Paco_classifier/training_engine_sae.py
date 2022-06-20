@@ -4,10 +4,10 @@ import copy
 import threading
 from enum import Enum
 import logging
+import random as rd
 
 import cv2
 import numpy as np
-import random as rd
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking

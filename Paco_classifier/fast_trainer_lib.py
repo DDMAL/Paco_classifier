@@ -5,10 +5,6 @@ Can be used in the standalone file or within Rodan.
 
 import os
 import logging
-import sys
-
-import cv2
-import numpy as np
 
 from . import training_engine_sae as training
 
