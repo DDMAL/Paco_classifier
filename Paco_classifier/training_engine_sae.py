@@ -5,6 +5,7 @@ import threading
 from enum import Enum
 import logging
 import random as rd
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -59,6 +60,13 @@ class SampleExtractionMode(Enum):
 # )
 # sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 # keras.backend.tensorflow_backend.set_session(sess)
+#physical_devices = tf.config.list_physical_devices('GPU')
+#try:
+#    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+#except:
+#    # Invalid device or cannot modify virtual devices once initialized.
+#    pass
+
 VALIDATION_SPLIT = 0.2
 # BATCH_SIZE = 16
 # ===========================
@@ -486,11 +494,19 @@ def train_msae(
 
     # Training loop
     for label in range(num_labels):
-        print("Training a new model for label #{}".format(str(label)))
+        print("Training a new model for label #{} with TFboard".format(str(label)))
         model = get_sae(height=height, width=width)
         # model.summary()
+
+        # Create a TensorBoard callback
+        logs = "/home/wanyi/projects/def-ichiro/wanyi/Paco_classifier/Results/Logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        tboard_callback = tf.keras.callbacks.TensorBoard(log_dir = logs,
+                                                         histogram_freq = 1,
+                                                         profile_batch = (3125, 3200))
+
         new_output_path = os.path.join(output_path[str(label)])
         callbacks_list = [
+            tboard_callback,
             ModelCheckpoint(
                 new_output_path,
                 save_best_only=True,
@@ -506,7 +522,7 @@ def train_msae(
         # Training stage
         model.fit(
             generators[label],
-            verbose=2,
+            verbose=1,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
             validation_steps=1,
@@ -515,6 +531,8 @@ def train_msae(
         )
         
         os.rename(new_output_path, output_path[str(label)])
+
+        break
 
     return 0
 
