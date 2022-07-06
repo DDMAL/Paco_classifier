@@ -8,7 +8,7 @@ import logging
 
 from . import training_engine_sae as training
 
-class CalvoTrainer:
+class PacoTrainer:
     def __init__(
         self,
         batch_size,
