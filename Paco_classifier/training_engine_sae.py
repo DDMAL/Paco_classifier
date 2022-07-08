@@ -501,7 +501,7 @@ def train_msae(
                 new_output_path,
                 save_best_only=True,
                 monitor="val_accuracy",
-                verbose=100,
+                verbose=1,
                 mode="max",
             ),
             EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
