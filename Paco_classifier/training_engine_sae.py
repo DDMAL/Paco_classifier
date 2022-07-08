@@ -9,7 +9,7 @@ import random as rd
 import cv2	
 import numpy as np
 
-from tensorflow.keras.models import Model	
+from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate	
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking	
 from tensorflow.keras.optimizers import Adam	
@@ -515,7 +515,7 @@ def train_msae(
             verbose=2,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
-            validation_steps=1,
+            validation_steps=100,
             callbacks=callbacks_list,
             epochs=epochs
         )
