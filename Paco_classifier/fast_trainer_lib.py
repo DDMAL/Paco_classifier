@@ -3,8 +3,8 @@ This file provides the code for model generation.
 Can be used in the standalone file or within Rodan.
 """
 
-import os
 import logging
+import os
 
 from . import training_engine_sae as training
 
@@ -20,6 +20,7 @@ class PacoTrainer:
         sample_extraction_mode,
         inputs,
         outputs,
+        models,
     ):
         self.batch_size = batch_size
         self.patch_height = patch_height
@@ -30,6 +31,7 @@ class PacoTrainer:
         self.sample_extraction_mode = sample_extraction_mode
         self.inputs = inputs
         self.outputs = outputs
+        self.models = models
 
         #file_selection_mode = training.FileSelectionMode.SHUFFLE
         #sample_extraction_mode = training.SampleExtractionMode.RANDOM
@@ -64,7 +66,8 @@ class PacoTrainer:
             sample_extraction_mode=self.sample_extraction_mode,
             epochs=self.max_number_of_epochs,
             number_samples_per_class=self.max_samples_per_class,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
+            models=self.models
         )
         print("Finishing the Fast CM trainer job.")
         for i in range(input_ports):
