@@ -490,31 +490,18 @@ def train_msae(
     for label in range(num_labels):
         print("Training a new model for label #{}".format(str(label)))
         # Pretrained weights
-        model = get_sae(height=height, width=width)
         model_name = "Model {}".format(label)
-        logging.info("HERE: {}".format(model_name))
-        logging.info("Inputs: {}".format(models))
         if model_name in models:
             model = load_model(models[model_name][0]['resource_path'])
-            # model.load_weights(models[model_name][0]['resource_path'])
-            logging.info("Loaded Model: {}".format(model_name))
         else:
             model = get_sae(height=height, width=width)
-        logging.info(model.summary())
-        logging.info("LAYERS")
-        # logging.info(model.layers)
-        # for i in model.layers:
-        #     logging.info(i)
-        #     logging.info(i.get_weights())
-        # logging.info("WEIGHTS")
-        # logging.info(model.layers[0].get_weights())
         new_output_path = os.path.join(output_path[str(label)])
         callbacks_list = [
             ModelCheckpoint(
                 new_output_path,
                 save_best_only=True,
                 monitor="val_accuracy",
-                verbose=1,
+                verbose=100,
                 mode="max",
             ),
             EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
