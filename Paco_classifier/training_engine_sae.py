@@ -487,6 +487,7 @@ def train_msae(
     patience=15
 ):
 
+
     # Create ground_truth
     print("Creating data generators...")
     generators = getTrain(inputs, num_labels, height, width, batch_size, file_selection_mode, sample_extraction_mode)
@@ -499,7 +500,8 @@ def train_msae(
         # model.summary()
 
         # Create a TensorBoard callback
-        logs = "/home/wanyi/projects/def-ichiro/wanyi/Paco_classifier/Results/Logs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        logs = "./Results/Logs/" + f"Model{label}_"+datetime.now().strftime("%Y%m%d-%H%M%S")
+        print (f">>> Plot tfboard to {logs}")
         tboard_callback = tf.keras.callbacks.TensorBoard(log_dir = logs,
                                                          histogram_freq = 1,
                                                          profile_batch = (3125, 3200))
@@ -514,11 +516,13 @@ def train_msae(
                 verbose=1,
                 mode="max",
             ),
-            EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
+            #EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
         ]
 
         steps_per_epoch = get_steps_per_epoch(inputs, number_samples_per_class, height, width, batch_size, sample_extraction_mode)
 
+
+        print (f"epochs: {epochs}, samples_per_class: {number_samples_per_class}, b_size: {batch_size}")
         # Training stage
         model.fit(
             generators[label],
