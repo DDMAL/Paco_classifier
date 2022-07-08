@@ -1,139 +1,105 @@
-# Paco-classifier
+# Iterative Training with Paco Classifier
+![](Pngs/Iterative_training.png)
+Correct manuscripts with `background removal` and `pixel`.
+2. Train `paco classifier` with the manuscript you just corrected.
+3. Let the trained `paco classifier` predict more manuscripts for you.
+4. Correct predicted manuscripts. Repeat `1`~`3` until you get satisfying results (means the paco classifier is able to predict correctly).
 
-Repository of the Rodan wrapper for Calvo classifier
+---
+## Iteration 1
+### Background Removal.
+This job use `Sauvola threshold` to remove background of a manuscript.
 
-# Rodan Jobs definition
-This repository includes the following Rodan Jobs:
-- `Fast Pixelwise Analysis of Music Document` in **fast_calvo_classifier.py**
-  - Available in the **GPU** Rodan queue.
-- `Training model for Patchwise Analysis of Music Document` in **fast_calvo_trainer.py**
-  - Available in the **GPU** Rodan queue.
-
-# Installation Dependencies
-
-## Python dependencies:
-
-  * h5py (2.7.0)
-  * html5lib (0.9999999)
-  * Keras (2.0.5)
-  * numpy (1.15.1)
-  * scipy (0.19.1)
-  * setuptools (36.0.1)
-  * six (1.10.0)
-  * Tensorflow (1.5)
-  * opencv-python (3.2.0.7)
-
-## Keras configuration
-
-Calvo's classifier needs *Keras* and *TensorFlow* to be installed. It can be easily done through **pip**. 
-
-*Keras* works over both Theano and Tensorflow, so after the installation check **~/.keras/keras.json** so that it looks like:
-
-~~~
-{
-    "image_dim_ordering": "tf",
-    "epsilon": 1e-07,
-    "floatx": "float32",
-    "backend": "tensorflow"
-}
-~~~
+The reuslt looks like this:
+![](Pngs/bgRemoval_sao.png)
 
 
-# Mode of use for training the model
+* Job Name: `Background Removal`
+* Category: `Background removal - remove image background`
+* Input Port: 
+  * `Image` of type `rgb+png`, `rgb+jpg`, `rgba+png`, `greyscale+png`, `onebit+png`.
+* Output Port: 
+  * `RGBA PNG image` of type `rgba+png`: the input `Image` with its background removed.
+  * (Optional) `Empty Layer`: An empty layer ready to be used as the `PNG-Layer<i> Input` of the `Pixel_js` job.
+* Settings:
+    * `Background Removal Method`: A drop down menu to select the method to do background removal. Support using [Sauvola Threshold](https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_niblack_sauvola.html) (no neural network) and [Selectional Auto-Encoder (SAE) binarize](https://github.com/ajgallego/document-image-binarization) (with neural network)
+    * `window_size`: The `window_size` for Sauvola Threshold, see docs for [`skimage`](https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.threshold_sauvola)
+    * `k`: The `k` for Sauvola Threshold, see docs for [`skimage`](https://scikit-image.org/docs/stable/api/skimage.filters.html#skimage.filters.threshold_sauvola)
+    * `contrast`: adjust contrast before using Sauvola Threshold with `img = img * (contrast/127+1) - contrast + brightness`
+    * `brightness`:  adjust brightness before using Sauvola Threshold with `img = img * (contrast/127+1) - contrast + brightness`
 
-There are two options:
-  * Through the module **fast_calvo_easy_training.py**. The parameters should be provided by console.
-  * Through the script **script_run_training.sh**. The parameters should be provided within this script, by modifying the corresponding values.
+### Pixel_js
+```
+Manually label a small regions!
+```
+Say we want two layers: `neumes` and `staff`, we need three input ports:
+1. `Image`: this will be the manuscript we sent to the `Background Removal`.
+2. `PNG-Layer1 Input`: this is the output port (`RGBA PNG image`) of the `Background Removal` job. 
+3. `PNG-Layer2 Input`: this will be the *optional* output port `Empty Layer` of the `Background Removal` job. In pixel, this is simply an empty layer.
 
-Both are ready for receiving different parameters.
-  * **-psr** `Path to the folder with the original images.` (**Default:** *datasets/images*)
-  * **-prg** `Path to the folder with the mask regions.` (**Default:** *datasets/regions*)
-  * **-pbg** `Path to the folder with the background ground-truth data.` (**Default:** *datasets/layers/background*)
-  * **-pgt** `A repeatable option for a path to the folder with ground-truth data for each layer (other than background).` (**Default:** *datasets/layers/staff*  *datasets/layers/neumes*)
-  * **-out** `A repeatable option for a path for the output model for each layer including the background.` (**Default:** *Models/model_background.hdf5*   *Models/model_staff.hdf5*  *Models/model_neumes.hdf5*)
-  * **-width** `Width of the window to extract samples.` (**Default:** *256*)
-  * **-height** `Height of the window to extract samples` (**Default:** *256*)
-  * **-b** `Batch size` (**Default:** *8*)
-  * **-e** `Maximum number of epochs to be considered. The model will stop before if the the training process does not improve the results.` (**Default:** *50*)
-  * **-n** `Number of samples to be extracted for each layer.` (**Default:** *1000*)
-  * **-pat** `Number of consecutive epochs allowed without improvement. The training is stopped if the model does not improve this number of consecutive epochs.` (**Default:** *15*)
-  * **-fm** `Mode of the selection of the files in the training process. Possible values: [RANDOM, SHUFFLE, SEQUENTIAL].` (**Default:** *SHUFFLE*)
-  * **-sm** `Mode of extraction of samples. Possible values: [RANDOM, SEQUENTIAL].` (**Default:** *RANDOM*)
-  
-Note that the parameters **-pgt** and **-out** are repeatable options. For including more layers, these two parameters have to be repeated one time for each layer to provide the corresponding paths. Note also that the **-out** parameter indicates the paths in which each trained model will be saved. So that, the number of paths provided with the parameter **-out** must match with the number of path folders provided for each layer, including the background one. 
+`Background Removal` only removes the background of an input manuscript, which means that all the neumes and staff we care about are still inside its output (`RGBA PNG image`). Say we want `neumes` in the first layer, `staff` in the second layer, our task is to move all the `staff` inside the pixel's first layer (`PNG-Layer1 Input`) to the second layer (`PNG-Layer2 Input`).
 
-If you have 3 layers (background, staff, neumes), you have to provide the path folder to the background data with **-pbg**, the path folders to the data of the rest of layers through **-pgt** (parameter repeated for each additional layer) and the output path for the trained models for each layer, being the background model the first one, and the rest of output paths matching with the different layers provided by **-pgt**, considering the order in which they were provided. For example:
+Before we actually get our hands dirty in doing this, make sure we crop a region first and only label pixels inside that region!
 
-~~~
-  python -u fast_calvo_easy_training.py  
-            -psr datasets/images  
-            -prg datasets/regions  
-            -pbg datasets/layers/bg  
-            -pgt datasets/layers/staff  
-            -pgt datasets/layers/neumes  
-            -out Models/model_background.hdf5  
-            -out Models/model_staff.hdf5  
-            -out Models/model_neumes.hdf5  
-            -width 256  
-            -height 256  
-            -b 8  
-            -e 50  
-            -n 1000  
-            -pat 15  
-            -fm SHUFFLE  
-            -sm RANDOM  
-~~~
+After labeling pixels inside a region, `Pixel_js` automatically generates an additional background layer for you. All the outputs (`Image`, `generated background`, `labeled neumes`, `labeled staff`, `cropped region`) arepacked into a `zip` file. We recommend not opening and modifying the zip file.
 
-When using **script_run_training.sh**, in console only it is necessary to run the script:
-~~~
-     ./script_run_training.sh`
-~~~
+This is the complete workflow for `Pixel_js`
+```
+Before you do the labeling job by hand.
+<PNG-Layer1 Input> contains <neumes> and <staff>.
+<PNG-Layer2 Input> contains nothing. It's just an empty layer.
 
-Within that script, there are a set of parameters with an example of use. Each one of these variables matches with a parameter of the python code.
+When working on Pixel_js:
+1. First, we crop a region.
+2. Second, go to <PNG-Layer1 Input>. Move all the <staff> to <PNG-Layer2 Input>
+3. We only have to work on the cropped region.
 
-  * **PATH_IMAGES**="datasets/images"  
-  * **PATH_REGIONS**="datasets/regions"  
-  * **PATH_BACKGROUND**="datasets/layers/background"  
-  * **PATH_LAYERS**=("datasets/layers/staff" "datasets/layers/neumes")  
-  * **OUTPUT_MODEL**=("Models/model_background.hdf5" "Models/model_staff.hdf5" "Models/model_neumes.hdf5")  
-  * **WINDOW_WIDTH**=256  
-  * **WINDOW_HEIGHT**=256  
-  * **BATCH_SIZE**=8  
-  * **MAX_EPOCHS**=50  
-  * **NUMBER_SAMPLES_PER_CLASS**=1000  
-  * **PATIENCE**=15  
-  * **FILE_SELECTION_MODE**="SHUFFLE"  
-  * **SAMPLE_EXTRACTION_MODE**="RANDOM"  
+After our labeling job:
+<PNG-Layer1 Input> contains <neumes>.
+<PNG-Layer2 Input> contains <staff>.
 
+Then Pixel_js prepares a zip file for you that contains:
+<Image>: The original manuscript.
+<rgba PNG - Layer 0 (Background)>: This is the background that Pixel_js generates for you.
+<rgba PNG - Layer 1>: This layer is labeled by us. It contains <neumes>.
+<rgba PNG - Layer 2>: This layer is labeled by us. It contains <staff>.
+<rgba PNG - Selected regions>: The region we cropped.
+```
 
-**IMPORTANT**: 
-**NUMBER_SAMPLES_PER_CLASS** cannot be smaller than **BATCH_SIZE**. The image width cannot be smaller than **WINDOW_WIDTH** and similarly, the image height cannot be smaller than **WINDOW_HEIGHT**. Ground truth portions of layers have to be fully opaque and have alpha channel value of 255 (`img[:, :, TRANSPARENCY] == 255`). Any image that contains 0 fully opaque pixel will be removed from the training set. Exception will be thrown if all images of a layer are empty.  
-  
-Currently, these scripts require that the data have a specific folder structure. It is necessary to have a folder for images, another for the region masks, another for the background layer, and an additional folder for each layer different to the background. For example:
+### Training model of Patchwise Analysis of Music Document, Training
+```
+Train the classifier with data we just labeled!
+```
+* Job Name: `Training model of Patchwise Analysis of Music Document, Training`
+* Category: `OMR - Layout analysis`
+* Input Port: 
+  * `Sample <i>` of type `application/zip`. This is the `zip` output from `Pixel_js`. We can add up to `20` input porst.
+* Output Port: 
+  * `Log file`: A log file.
+  * `Model <j>`: The trained `jth` model to predict the `jth` layer.
 
-  - **datasets** `Parent folder.`
-    - **images** `Folder for images.`
-    - **regions** `Folder for the region masks.`
-    - **background** `Folder for the background layer.`
-    - **staff** `Folder for the staff layer.`
-    - **neume** `Folder for the neume notation layer.`
-    - **layer_x** `Folder for the x-th layer, etc.`
+The number of output models equals the number of input layers to `Pixel_js` + one additional background layer generated by `Pixel_js`!
 
-With this structure, each image have exactly the same name of the associated data in each folder. For example:
-  - **datasets**
-    - **images** 
-      - image_01.png
-      - example_99.png
-    - **regions**
-      - image_01.png
-      - example_99.png
-    - **layers**
-      - **background**
-        - image_01.png
-        - example_99.png
-      - **staff**
-        - image_01.png
-        - example_99.png
-      - **neume**
-        - image_01.png
-        - example_99.png
+```
+Here we'll reuse the example workflow in Pixel_js as an example. In the Pixel_js's example we input two layers: <PNG-Layer1 Input> and <PNG-Layer2 Input>, and labeled them as <neumes> and <staff>.
+
+Since #output models of <Training model of Patchwise Analysis of Music Document, Training> is #layers + 1, in this exmpale, #output models will be 2+1=3. We get three trained models: one for background generated by Pixel_js, one for labeled neumes, and one for labeled staff.
+```
+### Training model of Patchwise Analysis of Music Document, Classifying
+```
+Use your trained model to classify more manuscripts!
+```
+* Job Name: `Fast Pixelwise Analysis of Music Document, Classifying`
+* Category: `OMR - Layout analysis`
+* Input Port: 
+  * `Image`: This is the manuscript you want to classify.
+  * `Background model`: The trained model to predict background.
+  * `Model <i>`: The trained model to predict `ith` layer.
+* Output Port: 
+  * `Background`: The predicted background
+  * `Layer <i>`: The predicted `ith` layer.
+
+## Iteration 2+
+The workflow `Training model of Patchwise Analysis of Music Document, Training` and `Fast Pixelwise Analysis of Music Document, Classifying` are the same. The only difference is the `Background Removal` and `Pixel_js`.
+
+Basically, in `2+` iteration, we don't need the `Background Removal` job anymore. The predicted layers, output `Layer<i>` from `Fast Pixelwise Analysis of Music Document, Classifying` of the last iteration, are the input layers (`PNG-Layer<i> Input`) to `Pixel_js`. So we correct the predicted layers from the trained model, and use the corrected layers as the new training data.
