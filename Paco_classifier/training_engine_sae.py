@@ -1,19 +1,20 @@
 from __future__ import division
-import os
-import copy
-import threading
-from enum import Enum
-import logging
-import random as rd
 
-import cv2
+import os	
+import copy	
+import threading	
+from enum import Enum	
+import logging	
+import random as rd	
+import cv2	
 import numpy as np
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from tensorflow.keras.backend import image_data_format
+
+from tensorflow.keras.models import Model, load_model
+from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate	
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking	
+from tensorflow.keras.optimizers import Adam	
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint	
+from tensorflow.keras.backend import image_data_format	
 import tensorflow as tf
 
 kPIXEL_VALUE_FOR_MASKING = -1
@@ -476,7 +477,8 @@ def train_msae(
     epochs,
     number_samples_per_class,
     batch_size=16,
-    patience=15
+    patience=15,
+    models=None
 ):
 
     # Create ground_truth
@@ -487,8 +489,12 @@ def train_msae(
     # Training loop
     for label in range(num_labels):
         print("Training a new model for label #{}".format(str(label)))
-        model = get_sae(height=height, width=width)
-        # model.summary()
+        # Pretrained weights
+        model_name = "Model {}".format(label)
+        if model_name in models:
+            model = load_model(models[model_name][0]['resource_path'])
+        else:
+            model = get_sae(height=height, width=width)
         new_output_path = os.path.join(output_path[str(label)])
         callbacks_list = [
             ModelCheckpoint(
@@ -509,7 +515,7 @@ def train_msae(
             verbose=2,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
-            validation_steps=1,
+            validation_steps=100,
             callbacks=callbacks_list,
             epochs=epochs
         )
