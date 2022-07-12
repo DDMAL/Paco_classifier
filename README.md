@@ -1,6 +1,7 @@
 # Iterative Training with Paco Classifier
 ![](Pngs/Iterative_training.png)
-Correct manuscripts with `background removal` and `pixel`.
+
+1. Correct manuscripts with `background removal` and `pixel`.
 2. Train `paco classifier` with the manuscript you just corrected.
 3. Let the trained `paco classifier` predict more manuscripts for you.
 4. Correct predicted manuscripts. Repeat `1`~`3` until you get satisfying results (means the paco classifier is able to predict correctly).
@@ -30,18 +31,18 @@ The reuslt looks like this:
 
 ### Pixel_js
 ```
-Manually label a small regions!
+Manually label a small region!
 ```
-Say we want two layers: `neumes` and `staff`, we need three input ports:
+Say we want two layers: `neumes` and `staff`, we need three input ports in `Pixel_js` job:
 1. `Image`: this will be the manuscript we sent to the `Background Removal`.
 2. `PNG-Layer1 Input`: this is the output port (`RGBA PNG image`) of the `Background Removal` job. 
-3. `PNG-Layer2 Input`: this will be the *optional* output port `Empty Layer` of the `Background Removal` job. In pixel, this is simply an empty layer.
+3. `PNG-Layer2 Input`: this will be the *optional* output port `Empty Layer` of the `Background Removal` job. In `Pixel_js`, this is simply an empty layer.
 
 `Background Removal` only removes the background of an input manuscript, which means that all the neumes and staff we care about are still inside its output (`RGBA PNG image`). Say we want `neumes` in the first layer, `staff` in the second layer, our task is to move all the `staff` inside the pixel's first layer (`PNG-Layer1 Input`) to the second layer (`PNG-Layer2 Input`).
 
 Before we actually get our hands dirty in doing this, make sure we crop a region first and only label pixels inside that region!
 
-After labeling pixels inside a region, `Pixel_js` automatically generates an additional background layer for you. All the outputs (`Image`, `generated background`, `labeled neumes`, `labeled staff`, `cropped region`) arepacked into a `zip` file. We recommend not opening and modifying the zip file.
+After labeling pixels inside a region, `Pixel_js` automatically generates an additional background layer for you. All the outputs (`Image`, `generated background`, `labeled neumes`, `labeled staff`, `cropped region`) are packed into a `zip` file. We recommend not opening and modifying the zip file!
 
 This is the complete workflow for `Pixel_js`
 ```
@@ -100,6 +101,6 @@ Use your trained model to classify more manuscripts!
   * `Layer <i>`: The predicted `ith` layer.
 
 ## Iteration 2+
-The workflow `Training model of Patchwise Analysis of Music Document, Training` and `Fast Pixelwise Analysis of Music Document, Classifying` are the same. The only difference is the `Background Removal` and `Pixel_js`.
+The workflow `Training model of Patchwise Analysis of Music Document, Training` and `Fast Pixelwise Analysis of Music Document, Classifying` is the same. The only difference is the `Background Removal` and `Pixel_js`.
 
 Basically, in `2+` iteration, we don't need the `Background Removal` job anymore. The predicted layers, output `Layer<i>` from `Fast Pixelwise Analysis of Music Document, Classifying` of the last iteration, are the input layers (`PNG-Layer<i> Input`) to `Pixel_js`. So we correct the predicted layers from the trained model, and use the corrected layers as the new training data.
