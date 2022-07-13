@@ -21,6 +21,7 @@ class PacoTrainer:
         inputs,
         outputs,
         models,
+        patience,
     ):
         self.batch_size = batch_size
         self.patch_height = patch_height
@@ -32,6 +33,7 @@ class PacoTrainer:
         self.inputs = inputs
         self.outputs = outputs
         self.models = models
+        self.patience = patience
 
         #file_selection_mode = training.FileSelectionMode.SHUFFLE
         #sample_extraction_mode = training.SampleExtractionMode.RANDOM
@@ -56,7 +58,7 @@ class PacoTrainer:
             # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
 
         # Call in training function
-        status = training.train_msae( # TODO: Including patience parameter for early stopping
+        status = training.train_msae(
             inputs=self.inputs,
             num_labels=input_ports,
             height=self.patch_height,
@@ -67,7 +69,8 @@ class PacoTrainer:
             epochs=self.max_number_of_epochs,
             number_samples_per_class=self.max_samples_per_class,
             batch_size=self.batch_size,
-            models=self.models
+            models=self.models,
+            patience=self.patience
         )
         print("Finishing the Fast CM trainer job.")
         for i in range(input_ports):
