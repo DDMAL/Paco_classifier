@@ -89,6 +89,22 @@ class threadsafe_iter:
         with self.lock:
             return next(self.it)
 
+def get_coords_from_npy(inputs, idx_file, idx_label):
+    coords_npy_path = ""
+    if idx_label == 0:
+        coords_npy_path = inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH]
+    else:
+        input_ports = len([x for x in inputs if "Layer" in x])
+        if idx_label >= input_ports : # If we try to access to an non-existing layer 
+            raise Exception(
+                'The index of the layer does not exist\n'
+                "input_ports: " + str(input_ports) + " index acceded: " + str(idx_label)
+            )
+        coords_npy_path = inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH]
+    coords_npy_path += ".npy"
+
+    coords = np.load(coords_npy_path)
+    return coords
 
 def get_input_shape(height, width, channels=3):
     if image_data_format() == "channels_first":
@@ -265,8 +281,8 @@ def createGeneratorSingleFileSequentialExtraction(inputs, idx_file, idx_label, r
 
 
 
-def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks):
-    potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
+def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks, coords):
+    potential_training_examples = coords.T
 
     num_coords = len(potential_training_examples[0])
 
@@ -294,12 +310,13 @@ def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_
 
 def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
     gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
+    coords = get_coords_from_npy(inputs, idx_file, idx_label)
 
     
     gr_chunks = []
     gt_chunks = []
 
-    extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
+    extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks, coords)
 
     gr_chunks_arr = np.array(gr_chunks)
     gt_chunks_arr = np.array(gt_chunks)
