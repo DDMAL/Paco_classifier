@@ -500,11 +500,12 @@ def train_msae(
         # model.summary()
 
         # Create a TensorBoard callback
-        logs = "./Results/Logs/" + f"Model{label}_"+datetime.now().strftime("%Y%m%d-%H%M%S")
+        logs = "./Results/Logs/" + f"Model{label}_"+datetime.now().strftime("%Y%m%d-%H%M%S")+f"_b{batch_size}"
+        steps_per_epoch = number_samples_per_class // batch_size
         print (f">>> Plot tfboard to {logs}")
         tboard_callback = tf.keras.callbacks.TensorBoard(log_dir = logs,
                                                          histogram_freq = 1,
-                                                         profile_batch = (3125, 3200))
+                                                         profile_batch = (steps_per_epoch*5, steps_per_epoch*6))
 
         new_output_path = os.path.join(output_path[str(label)])
         callbacks_list = [
@@ -513,7 +514,7 @@ def train_msae(
                 new_output_path,
                 save_best_only=True,
                 monitor="val_accuracy",
-                verbose=1,
+                verbose=100,
                 mode="max",
             ),
             #EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
@@ -535,8 +536,6 @@ def train_msae(
         )
         
         os.rename(new_output_path, output_path[str(label)])
-
-        break
 
     return 0
 
