@@ -483,7 +483,7 @@ def train_msae(
         print("Training a new model for label #{}".format(str(label)))
         # Pretrained weights
         model_name = "Model {}".format(label)
-        if model_name in models:
+        if models != None and model_name in models:
             model = load_model(models[model_name][0]['resource_path'])
         else:
             model = get_sae(height=height, width=width)
