@@ -174,7 +174,7 @@ def threadsafe_generator(f):
     return g
 
 #Load a Ground-truth image and apply the region mask if it is given
-def load_gt_image(path_file, regions_mask=None):
+def load_gt_layer(path_file):
     file_obj = cv2.imread(path_file, cv2.IMREAD_UNCHANGED,)  # 4-channel
     if file_obj is None : 
         raise Exception(
@@ -184,15 +184,10 @@ def load_gt_image(path_file, regions_mask=None):
 
     TRANSPARENCY = 3
     bg_mask = (file_obj[:, :, TRANSPARENCY] == 255)
-    
-    if regions_mask is not None:
-        masked = np.logical_and(bg_mask, regions_mask)
-        return masked
-    else:
-        return bg_mask
 
-def get_gt_image_and_regions(inputs, idx_label, idx_file):
-    regions_mask = load_gt_image(inputs[KEY_SELECTED_REGIONS][idx_file][KEY_RESOURCE_PATH])
+    return bg_mask
+
+def get_gt_layer(inputs, idx_label, idx_file):
 
     if idx_label == 0:
         gt_path_file = inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH]
@@ -206,8 +201,9 @@ def get_gt_image_and_regions(inputs, idx_label, idx_file):
 
         gt_path_file = inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH]
         
-    gt = load_gt_image(gt_path_file, regions_mask)
-    return gt, regions_mask
+    gt = load_gt_layer(gt_path_file)
+
+    return gt
 
 def get_image_with_gt(inputs, idx_file, idx_label):
 
@@ -220,13 +216,9 @@ def get_image_with_gt(inputs, idx_file, idx_label):
             "input images: " + str(number_of_training_pages) + " index acceded: " + str(idx_file)
         )
 
-    gt, regions_mask = get_gt_image_and_regions(inputs, idx_label, idx_file)
+    gt = get_gt_layer(inputs, idx_label, idx_file)
     gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
     gr = (255.-gr) / 255.
-
-    #Deactivate the training process for pixels outside the region mask
-    l = np.where((regions_mask == 0))
-    gr[l] = kPIXEL_VALUE_FOR_MASKING
 
     return gr, gt
 
@@ -401,7 +393,7 @@ def createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_si
 def deleteImagesWith(inputs, idx_label):
     for idx_file in range(len(inputs["Image"])-1, -1, -1):
         
-        gt, _ = get_gt_image_and_regions(inputs, idx_label, idx_file)
+        gt = get_gt_layer(inputs, idx_label, idx_file)
 
         if (np.sum(gt) == 0):
             inputs["Image"].pop(idx_file)
