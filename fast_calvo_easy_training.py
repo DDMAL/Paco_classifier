@@ -31,19 +31,17 @@ from Paco_classifier.input_settings_test import pre_training_check
 #       CONSTANTS
 # ===========================
 KEY_BACKGROUND_LAYER = "rgba PNG - Layer 0 (Background)"
-KEY_SELECTED_REGIONS = "rgba PNG - Selected regions"
 KEY_RESOURCE_PATH = "resource_path"
 
 kPATH_IMAGES_DEFAULT = "datasets/images"
-kPATH_REGION_MASKS_DEFAULT = "datasets/regions"
 kPATH_BACKGROUND_DEFAULT = "datasets/layers/background"
 kPATH_LAYERS_DEFAULT = ["datasets/layers/staff", "datasets/layers/neumes"]
 kPATH_OUTPUT_MODELS_DEFAULT = ["Models/model_background.h5", "Models/model_staff.h5", "Models/model_neumes.h5"]
-kBATCH_SIZE_DEFAULT = 8
+kBATCH_SIZE_DEFAULT = 1
 kPATCH_HEIGHT_DEFAULT = 256
 kPATCH_WIDTH_DEFAULT = 256
 kMAX_NUMBER_OF_EPOCHS_DEFAULT = 1
-kNUMBER_SAMPLES_PER_CLASS_DEFAULT = 100
+kNUMBER_SAMPLES_PER_CLASS_DEFAULT = 1
 kEARLY_STOPPING_PATIENCE_DEFAULT = 15
 kFILE_SELECTION_MODE_DEFAULT = training.FileSelectionMode.SHUFFLE
 kSAMPLE_EXTRACTION_MODE_DEFAULT = training.SampleExtractionMode.RANDOM
@@ -58,13 +56,6 @@ def menu():
                     default=kPATH_IMAGES_DEFAULT, 
                     dest='path_src', 
                     help='Path of the source folder that contains the original images.'
-                    )
-
-    parser.add_argument(
-                    '-prg',  
-                    default=kPATH_REGION_MASKS_DEFAULT,
-                    dest='path_regions', 
-                    help='Path of the folder that contains the region masks.'
                     )
 
     parser.add_argument(
@@ -178,7 +169,6 @@ def init_input_dictionary(config):
 
     inputs["Image"] = []
     inputs[KEY_BACKGROUND_LAYER] = []
-    inputs[KEY_SELECTED_REGIONS] = []
 
     idx_layer = 1
     for path_layer in config.path_layer:
@@ -209,12 +199,6 @@ def init_input_dictionary(config):
 
         filename_without_ext, ext = os.path.splitext(filename_img)
         filename_png = filename_without_ext + ".png"
-
-        path_regions = os.path.join(config.path_regions, filename_png)
-        dict_img = {}
-        dict_img[KEY_RESOURCE_PATH] = path_regions
-        inputs[KEY_SELECTED_REGIONS].append(dict_img)
-        
 
         idx_layer = 1
         for path_layer in config.path_layer:
