@@ -14,9 +14,10 @@ from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking	
 from tensorflow.keras.optimizers import Adam	
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint	
-from tensorflow.keras.backend import image_data_format	
+from tensorflow.keras.backend import image_data_format, set_floatx
 import tensorflow as tf
 
+set_floatx('float16')
 kPIXEL_VALUE_FOR_MASKING = -1
 
 class FileSelectionMode(Enum):
@@ -176,6 +177,7 @@ def threadsafe_generator(f):
 #Load a Ground-truth image and apply the region mask if it is given
 def load_gt_image(path_file, regions_mask=None):
     file_obj = cv2.imread(path_file, cv2.IMREAD_UNCHANGED,)  # 4-channel
+    # print(file_obj.dtype)
     if file_obj is None : 
         raise Exception(
             'It is not possible to load the image\n'
@@ -506,6 +508,10 @@ def train_msae(
             ),
             EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
         ]
+        for i in model.inputs:
+            print(i.dtype)
+        for i in model.outputs:
+            print(i.dtype)
 
         steps_per_epoch = get_steps_per_epoch(inputs, number_samples_per_class, height, width, batch_size, sample_extraction_mode)
 
@@ -515,7 +521,7 @@ def train_msae(
             verbose=2,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
-            validation_steps=100,
+            validation_steps=1,
             callbacks=callbacks_list,
             epochs=epochs
         )
