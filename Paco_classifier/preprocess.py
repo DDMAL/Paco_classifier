@@ -17,47 +17,38 @@ def getMaskFromRegion(region_path):
     mask = (mask == 255)
     return mask
 
-def writeCoordsToNpy(masked_layer, layer_path, patch_height, patch_width):
-    """
-    Extract the xy coordinate of labeled pixels in <masked_layer>. LABELED means that the value
-    of a pixel is set to True. Keep extracted coordinates to a (#pixels, 2) ndarray and dump to .npy file. 
-    Reading a npy file is supposed to run faster than np.where in each step.
+def writeImgLayer(target, path):
+    *path_prefix, target_name = path.split("/")
+    filename = osp.join(*path_prefix, "{}-cropped.png".format(target_name))
+    cv2.imwrite(filename, target)
 
-    Params:
-        masked_layer: ndarray of shape (W, H) and type bool. Labeled pixels are set True.
-        layer_path: the path in dict[whatever keys you need]["resource_path"]. This is where you the layer is saved.
-    
-    Return:
-        NONE. A ndarray of shape (#pixels, 2) is saved to <layer_path>+'.npy' with np.save(...).
-    """
-    # This is where the conversion starts
-    x_coord, y_coord = np.where(masked_layer[:-patch_height, :-patch_width] == 1)
-    coord = np.stack((x_coord, y_coord), axis=-1)
-
-    *layer_path_prefix, layer_name = layer_path.split("/")
-    filename = osp.join(*layer_path_prefix, "{}.npy".format(layer_name))
-    np.save(filename, coord)
+    return filename
 
 def preprocess(inputs, patch_height, patch_width):
     """
     Run a bunch of preprocessing steps in this function. Currently we have:
-    1. Extract xy coordinates to stop using np.where in each step.
+    1. extract X/Y/W/H from region mask and crop images and layers first
     """
     layer_key_list = [k for k in inputs.keys() if "Image" not in k and "regions" not in k]
 
     for idx in range(len(inputs["rgba PNG - Selected regions"])): # Select Region
         region_path = inputs["rgba PNG - Selected regions"][idx]["resource_path"]
-        mask = getMaskFromRegion(region_path)
+        mask = getMaskFromRegion(region_path) 
+
+        # Extract (x, y, w, h) from region mask
+        X, Y, W, H = cv2.boundingRect(mask.astype(np.uint8))
+
+        img_path = inputs["Image"][idx]["resource_path"]
+
+        # Crop image and write image
+        img = cv2.imread(img_path, cv2.IMREAD_COLOR)[Y:Y+H, X:X+W, :]  # RGB, uint8
+        new_path = writeImgLayer(img, img_path)
+        inputs["Image"][idx]["resource_path"] = new_path
 
         for layer_key in layer_key_list: # Bg, neumes, staff. Exclude Image and Region
-            # === Do not change this section, this section is meant to be identical to training_engine_sae.py ===
             layer_path = inputs[layer_key][idx]["resource_path"]
-            layer = cv2.imread(layer_path, cv2.IMREAD_UNCHANGED,)  # 4-channel
 
-            TRANSPARENCY = 3
-            layer = (layer[:, :, TRANSPARENCY] == 255)
-            
-            masked_layer = np.logical_and(layer, mask) # (W, H) with type bool. This is the Y
-            # === === ===
-            # 1. 
-            writeCoordsToNpy(masked_layer, layer_path, patch_height, patch_width)
+            # Crop layer and write layer
+            layer = cv2.imread(layer_path, cv2.IMREAD_UNCHANGED)[Y:Y+H, X:X+W, :]  # 4-channel
+            new_path = writeImgLayer(layer, layer_path)
+            inputs[layer_key][idx]["resource_path"] = new_path
