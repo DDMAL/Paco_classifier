@@ -255,7 +255,7 @@ def createGeneratorSingleFileSequentialExtraction(inputs, idx_file, idx_label, r
 
 
 
-def extractRandomSamplesClass(gr, gt, idx_class, patch_height, patch_width, batch_size, gr_chunks, gt_chunks):
+def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks):
     potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
 
     num_coords = len(potential_training_examples[0])
@@ -289,10 +289,7 @@ def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width,
     gr_chunks = []
     gt_chunks = []
 
-    num_samples_with_layer = batch_size // 2
-
-    extractRandomSamplesClass(gr, gt, 1, patch_height, patch_width, num_samples_with_layer, gr_chunks, gt_chunks)
-    extractRandomSamplesClass(gr, gt, 0, patch_height, patch_width, batch_size-num_samples_with_layer, gr_chunks, gt_chunks)
+    extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
 
     gr_chunks_arr = np.array(gr_chunks)
     gt_chunks_arr = np.array(gt_chunks)
