@@ -383,30 +383,23 @@ def getTrain(inputs, num_labels, patch_height, patch_width, batch_size, file_sel
 
     return generator_labels
 
-
-
-def get_number_samples_sequential(inputs, patch_height, patch_width):
-    hstride, wstride = get_stride(patch_height, patch_width)
-    number_samples = 0
-
-    for idx_file in range(len(inputs["Image"])):
-        gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
-        number_samples += ((gr.shape[0] - patch_height) // hstride) * ((gr.shape[1] - patch_width) // wstride)
-
-    return number_samples
-
 def get_steps_per_epoch(inputs, number_samples_per_class, patch_height, patch_width, batch_size, sample_extraction_mode):
 
     if sample_extraction_mode == SampleExtractionMode.RANDOM:
         return number_samples_per_class // batch_size
     elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-        return get_number_samples_sequential(inputs, patch_height, patch_width) // batch_size
+        hstride, wstride = get_stride(patch_height, patch_width)
+        number_samples = 0
+
+        for idx_file in range(len(inputs["Image"])):
+            gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
+            number_samples += ((gr.shape[0] - patch_height) // hstride) * ((gr.shape[1] - patch_width) // wstride)
+
+        return number_samples // batch_size
     else:
         raise Exception(
             'The sample extraction mode does not exist.\n'
-        )
-        
-    
+        )    
 
 def train_msae(
     inputs,
