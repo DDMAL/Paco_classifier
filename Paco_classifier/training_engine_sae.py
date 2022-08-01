@@ -313,7 +313,6 @@ def createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_heigh
     count = 0
     for row in range(0, gr.shape[0] - patch_height, hstride):
         for col in range(0, gr.shape[1] - patch_width, wstride):
-
             appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks)
             count +=1
             if count % batch_size == 0:
@@ -325,65 +324,6 @@ def createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_heigh
                 gr_chunks = []
                 gt_chunks = []
                 count = 0
-
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGeneratorDefault(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    print("Creating default generator...")
-    
-    number_of_training_pages = len(inputs["Image"])
-
-    while True:
-        for idx_file in range(number_of_training_pages):
-            if sample_extraction_mode == SampleExtractionMode.RANDOM:
-                yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-            elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-                    yield i
-            else:
-                raise Exception(
-                    'The sample extraction mode does not exist.\n'
-                )
-
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGeneratorShuffle(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    print("Creating shuffle generator...")
-    
-    list_shuffle_idx_files = list(range(len(inputs["Image"])))
-        
-    while True:
-        rd.shuffle(list_shuffle_idx_files)
-        
-        for idx_file in list_shuffle_idx_files:
-            if sample_extraction_mode == SampleExtractionMode.RANDOM:
-                yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-            elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-                    yield i
-            else:
-                raise Exception(
-                    'The sample extraction mode does not exist.\n'
-                )
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    print("Creating random generator...")
-
-    number_of_training_pages = len(inputs["Image"])
-
-    while True:
-        idx_file = np.random.randint(number_of_training_pages)  # Changed len to grs from gr
-        if sample_extraction_mode == SampleExtractionMode.RANDOM:
-            yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-        elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-            for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-                yield i
-        else:
-            raise Exception(
-                'The sample extraction mode does not exist.\n'
-            )
-
 
 def deleteImagesWith(inputs, idx_label):
     for idx_file in range(len(inputs["Image"])-1, -1, -1):
@@ -400,18 +340,34 @@ def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size, fi
     inputs_copy = copy.deepcopy(inputs)
     inputs_copy = deleteImagesWith(inputs_copy, idx_label)
 
-    if file_selection_mode == FileSelectionMode.DEFAULT:
-        return createGeneratorDefault(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-    elif file_selection_mode == FileSelectionMode.SHUFFLE:
-        return createGeneratorShuffle(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+    print("Creating {} generator...".format(str(file_selection_mode).lower()))
+
+    if file_selection_mode == FileSelectionMode.SHUFFLE:
+        list_idx_files = list(range(len(inputs_copy["Image"])))
+        rd.shuffle(list_idx_files)
+    elif file_selection_mode == FileSelectionMode.DEFAULT:
+        list_idx_files = list(range(len(inputs_copy["Image"])))
     elif file_selection_mode == FileSelectionMode.RANDOM:
-        return createGeneratorRandom(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+        number_of_training_pages = len(inputs_copy["Image"])
+        list_idx_files = [np.random.randint(number_of_training_pages)]
     else:
         raise Exception(
             'The file extraction mode does not exist.\n'
         ) 
 
-
+    while True:
+        if file_selection_mode == FileSelectionMode.SHUFFLE:
+            rd.shuffle(list_idx_files)
+        for idx_file in list_idx_files:
+            if sample_extraction_mode == SampleExtractionMode.RANDOM:
+                yield extractRandomSamples(inputs_copy, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+            elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
+                for i in createGeneratorSequentialExtraction(inputs_copy, idx_file, idx_label, patch_height, patch_width, batch_size):
+                    yield i
+            else:
+                raise Exception(
+                    'The sample extraction mode does not exist.\n'
+                )
 
 def getTrain(inputs, num_labels, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode):
     generator_labels = []
