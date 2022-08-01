@@ -88,18 +88,15 @@ class threadsafe_iter:
         with self.lock:
             return next(self.it)
 
-
-def get_input_shape(height, width, channels=3):
-    if image_data_format() == "channels_first":
-        return (channels, height, width)
-    else:
-        return (height, width, channels)
-
-
 def get_sae(height, width, pretrained_weights=None):
     ff = 32
+    channels = 3
 
-    inputs = Input(shape=get_input_shape(height, width))
+    img_shape = (height, width, channels)
+    if image_data_format() == "channels_first":
+        img_shape = (channels, height, width)
+
+    inputs = Input(shape=img_shape)
     mask = Masking(mask_value=kPIXEL_VALUE_FOR_MASKING)(inputs)
 
     conv1 = Conv2D(
