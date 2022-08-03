@@ -171,7 +171,7 @@ def threadsafe_generator(f):
 
 #Load a Ground-truth image and apply the region mask if it is given
 def loadLayer(path_file):
-    file_obj = cv2.imread(path_file, cv2.IMREAD_UNCHANGED,)  # 4-channel
+    file_obj = np.load(path_file)
     if file_obj is None : 
         raise Exception(
             'It is not possible to load the image\n'
@@ -212,7 +212,7 @@ def get_image_with_gt(inputs, idx_file, idx_label):
         )
 
     gt = getLayer(inputs, idx_label, idx_file)
-    gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
+    gr = np.load(inputs["Image"][idx_file][KEY_RESOURCE_PATH])  # 3-channel
     gr = (255.-gr) / 255.
 
     return gr, gt
@@ -423,7 +423,7 @@ def train_msae(
         print("Training a new model for label #{}".format(str(label)))
         # Pretrained weights
         model_name = "Model {}".format(label)
-        if model_name in models:
+        if models != None and model_name in models:
             model = load_model(models[model_name][0]['resource_path'])
         else:
             model = get_sae(height=height, width=width)

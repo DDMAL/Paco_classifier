@@ -24,7 +24,6 @@ import numpy as np
 import Paco_classifier.training_engine_sae as training
 import pdb
 import argparse
-from Paco_classifier.input_settings_test import pre_training_check
 import Paco_classifier.preprocess as preprocess
 
 # ===========================
@@ -260,9 +259,8 @@ inputs = init_input_dictionary(config)
 outputs = init_output_dictionary(config)
 
 # Sanity check
-pre_training_check(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
 print ("Start preprocess")
-preprocess.preprocess(inputs, config.patch_height, config.patch_width)
+preprocess.preprocess(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
 print ("After pre_training_check")
 
 input_ports = len([x for x in inputs if "Layer" in x])
