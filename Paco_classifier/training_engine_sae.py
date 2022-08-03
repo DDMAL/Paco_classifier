@@ -88,18 +88,15 @@ class threadsafe_iter:
         with self.lock:
             return next(self.it)
 
-
-def get_input_shape(height, width, channels=3):
-    if image_data_format() == "channels_first":
-        return (channels, height, width)
-    else:
-        return (height, width, channels)
-
-
 def get_sae(height, width, pretrained_weights=None):
     ff = 32
+    channels = 3
 
-    inputs = Input(shape=get_input_shape(height, width))
+    img_shape = (height, width, channels)
+    if image_data_format() == "channels_first":
+        img_shape = (channels, height, width)
+
+    inputs = Input(shape=img_shape)
     mask = Masking(mask_value=kPIXEL_VALUE_FOR_MASKING)(inputs)
 
     conv1 = Conv2D(
@@ -313,7 +310,6 @@ def createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_heigh
     count = 0
     for row in range(0, gr.shape[0] - patch_height, hstride):
         for col in range(0, gr.shape[1] - patch_width, wstride):
-
             appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks)
             count +=1
             if count % batch_size == 0:
@@ -325,65 +321,6 @@ def createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_heigh
                 gr_chunks = []
                 gt_chunks = []
                 count = 0
-
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGeneratorDefault(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    print("Creating default generator...")
-    
-    number_of_training_pages = len(inputs["Image"])
-
-    while True:
-        for idx_file in range(number_of_training_pages):
-            if sample_extraction_mode == SampleExtractionMode.RANDOM:
-                yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-            elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-                    yield i
-            else:
-                raise Exception(
-                    'The sample extraction mode does not exist.\n'
-                )
-
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGeneratorShuffle(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    print("Creating shuffle generator...")
-    
-    list_shuffle_idx_files = list(range(len(inputs["Image"])))
-        
-    while True:
-        rd.shuffle(list_shuffle_idx_files)
-        
-        for idx_file in list_shuffle_idx_files:
-            if sample_extraction_mode == SampleExtractionMode.RANDOM:
-                yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-            elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-                    yield i
-            else:
-                raise Exception(
-                    'The sample extraction mode does not exist.\n'
-                )
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGeneratorRandom(inputs, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    print("Creating random generator...")
-
-    number_of_training_pages = len(inputs["Image"])
-
-    while True:
-        idx_file = np.random.randint(number_of_training_pages)  # Changed len to grs from gr
-        if sample_extraction_mode == SampleExtractionMode.RANDOM:
-            yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-        elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-            for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-                yield i
-        else:
-            raise Exception(
-                'The sample extraction mode does not exist.\n'
-            )
-
 
 def deleteImagesWith(inputs, idx_label):
     for idx_file in range(len(inputs["Image"])-1, -1, -1):
@@ -400,18 +337,34 @@ def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size, fi
     inputs_copy = copy.deepcopy(inputs)
     inputs_copy = deleteImagesWith(inputs_copy, idx_label)
 
-    if file_selection_mode == FileSelectionMode.DEFAULT:
-        return createGeneratorDefault(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-    elif file_selection_mode == FileSelectionMode.SHUFFLE:
-        return createGeneratorShuffle(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+    print("Creating {} generator...".format(str(file_selection_mode).lower()))
+
+    if file_selection_mode == FileSelectionMode.SHUFFLE:
+        list_idx_files = list(range(len(inputs_copy["Image"])))
+        rd.shuffle(list_idx_files)
+    elif file_selection_mode == FileSelectionMode.DEFAULT:
+        list_idx_files = list(range(len(inputs_copy["Image"])))
     elif file_selection_mode == FileSelectionMode.RANDOM:
-        return createGeneratorRandom(inputs_copy, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+        number_of_training_pages = len(inputs_copy["Image"])
+        list_idx_files = [np.random.randint(number_of_training_pages)]
     else:
         raise Exception(
             'The file extraction mode does not exist.\n'
         ) 
 
-
+    while True:
+        if file_selection_mode == FileSelectionMode.SHUFFLE:
+            rd.shuffle(list_idx_files)
+        for idx_file in list_idx_files:
+            if sample_extraction_mode == SampleExtractionMode.RANDOM:
+                yield extractRandomSamples(inputs_copy, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+            elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
+                for i in createGeneratorSequentialExtraction(inputs_copy, idx_file, idx_label, patch_height, patch_width, batch_size):
+                    yield i
+            else:
+                raise Exception(
+                    'The sample extraction mode does not exist.\n'
+                )
 
 def getTrain(inputs, num_labels, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode):
     generator_labels = []
@@ -427,30 +380,23 @@ def getTrain(inputs, num_labels, patch_height, patch_width, batch_size, file_sel
 
     return generator_labels
 
-
-
-def get_number_samples_sequential(inputs, patch_height, patch_width):
-    hstride, wstride = get_stride(patch_height, patch_width)
-    number_samples = 0
-
-    for idx_file in range(len(inputs["Image"])):
-        gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
-        number_samples += ((gr.shape[0] - patch_height) // hstride) * ((gr.shape[1] - patch_width) // wstride)
-
-    return number_samples
-
 def get_steps_per_epoch(inputs, number_samples_per_class, patch_height, patch_width, batch_size, sample_extraction_mode):
 
     if sample_extraction_mode == SampleExtractionMode.RANDOM:
         return number_samples_per_class // batch_size
     elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-        return get_number_samples_sequential(inputs, patch_height, patch_width) // batch_size
+        hstride, wstride = get_stride(patch_height, patch_width)
+        number_samples = 0
+
+        for idx_file in range(len(inputs["Image"])):
+            gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
+            number_samples += ((gr.shape[0] - patch_height) // hstride) * ((gr.shape[1] - patch_width) // wstride)
+
+        return number_samples // batch_size
     else:
         raise Exception(
             'The sample extraction mode does not exist.\n'
-        )
-        
-    
+        )    
 
 def train_msae(
     inputs,
