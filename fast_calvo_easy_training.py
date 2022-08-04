@@ -14,165 +14,42 @@ If the container is already running, try `docker exec -it [container_name] bash`
 stopping.
 """
 
-import logging
 import os
-import sys
-
-print (sys.path)
 import cv2
-import numpy as np
-import Paco_classifier.training_engine_sae as training
 import pdb
+import sys
+import logging
 import argparse
+import numpy as np
+
+import Paco_classifier.training_engine_sae as training
 import Paco_classifier.preprocess as preprocess
 
-# ===========================
-#       CONSTANTS
-# ===========================
+from ConfigParser import loadConfig
+
 KEY_BACKGROUND_LAYER = "rgba PNG - Layer 0 (Background)"
 KEY_SELECTED_REGIONS = "rgba PNG - Selected regions"
 KEY_RESOURCE_PATH = "resource_path"
 
-kPATH_IMAGES_DEFAULT = "datasets/images"
-kPATH_REGION_MASKS_DEFAULT = "datasets/regions"
-kPATH_BACKGROUND_DEFAULT = "datasets/layers/background"
-kPATH_LAYERS_DEFAULT = ["datasets/layers/staff", "datasets/layers/neumes"]
-kPATH_OUTPUT_MODELS_DEFAULT = ["Models/model_background.h5", "Models/model_staff.h5", "Models/model_neumes.h5"]
-kBATCH_SIZE_DEFAULT = 8
-kPATCH_HEIGHT_DEFAULT = 256
-kPATCH_WIDTH_DEFAULT = 256
-kMAX_NUMBER_OF_EPOCHS_DEFAULT = 1
-kNUMBER_SAMPLES_PER_CLASS_DEFAULT = 100
-kEARLY_STOPPING_PATIENCE_DEFAULT = 15
-kFILE_SELECTION_MODE_DEFAULT = training.FileSelectionMode.SHUFFLE
-kSAMPLE_EXTRACTION_MODE_DEFAULT = training.SampleExtractionMode.RANDOM
-# ===========================
+def getArgs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default="./Configs/config.yaml")
+    return parser.parse_args()
 
-
-def menu():
-    parser = argparse.ArgumentParser(description='Fast trainer')
-
-    parser.add_argument(
-                    '-psr',  
-                    default=kPATH_IMAGES_DEFAULT, 
-                    dest='path_src', 
-                    help='Path of the source folder that contains the original images.'
-                    )
-
-    parser.add_argument(
-                    '-prg',  
-                    default=kPATH_REGION_MASKS_DEFAULT,
-                    dest='path_regions', 
-                    help='Path of the folder that contains the region masks.'
-                    )
-
-    parser.add_argument(
-                    '-pbg',  
-                    default=kPATH_BACKGROUND_DEFAULT,
-                    dest='path_bg', 
-                    help='Path of the folder with the background layer data.'
-                    )
-
-    parser.add_argument(
-                    '-pgt',
-                    dest='path_layer', 
-                    help='Paths of the ground-truth folders to be considered (one per layer).', 
-                    action='append'
-                    )
-    
-    parser.add_argument(
-                    '-out',
-                    dest='path_out', 
-                    help='Paths for the models saved after the training.', 
-                    action='append'
-                    )
-
-    parser.add_argument(
-                    '-width',
-                    default=kPATCH_HEIGHT_DEFAULT,
-                    dest='patch_width',
-                    type=int,
-                    help='Patch width'
-                    )
-
-    parser.add_argument(
-                    '-height',
-                    default=kPATCH_WIDTH_DEFAULT,
-                    dest='patch_height',
-                    type=int,
-                    help='Patch height'
-                    )
-
-    parser.add_argument(
-                    '-b',
-                    default=kBATCH_SIZE_DEFAULT,
-                    dest='batch_size',
-                    type=int,
-                    help='Batch size'
-                    )
-
-    parser.add_argument(
-                    '-e',
-                    default=kMAX_NUMBER_OF_EPOCHS_DEFAULT,
-                    dest='max_epochs',
-                    type=int,
-                    help='Maximum number of epochs'
-                    )
-
-    parser.add_argument(
-                    '-n',
-                    default=kNUMBER_SAMPLES_PER_CLASS_DEFAULT,
-                    dest='number_samples_per_class',
-                    type=int,
-                    help='Number of samples per class to be extracted'
-                    )
-
-    parser.add_argument(
-                    '-fm',
-                    default=kFILE_SELECTION_MODE_DEFAULT, 
-                    dest='file_selection_mode',
-                    type=training.FileSelectionMode.from_string, 
-                    choices=list(training.FileSelectionMode), 
-                    help='Mode of selecting images in the training process'
-                    )
-
-    parser.add_argument(
-                    '-sm',
-                    default=kSAMPLE_EXTRACTION_MODE_DEFAULT, 
-                    dest='sample_extraction_mode',
-                    type=training.SampleExtractionMode.from_string, 
-                    choices=list(training.SampleExtractionMode), 
-                    help='Mode of extracing samples for each image in the training process'
-                    )
-
-    parser.add_argument(
-                    '-pat',
-                    default=kEARLY_STOPPING_PATIENCE_DEFAULT,
-                    dest='patience',
-                    type=int,
-                    help='Number of epochs of patience for the early stopping. If the model does not improves the training results in this number of consecutive epochs, the training is stopped.'
-                    )
-
-    args = parser.parse_args()
-
-    args.path_layer = args.path_layer if args.path_layer is not None else kPATH_LAYERS_DEFAULT
-    args.path_out = args.path_out if args.path_out is not None else kPATH_OUTPUT_MODELS_DEFAULT
-    
-
-    print('CONFIG:\n -', str(args).replace('Namespace(','').replace(')','').replace(', ', '\n - '))
-
-    return args
-
-# Return the list of files in folder
-# ext param is optional. For example: 'jpg' or 'jpg|jpeg|bmp|png'
 def list_files(directory, ext=None):
+    """
+    Return the list of files in folder
+    ext param is optional. For example: 'jpg' or 'jpg|jpeg|bmp|png'
+    """
     list_files =  [os.path.join(directory, f) for f in os.listdir(directory)
         if os.path.isfile(os.path.join(directory, f)) and ( ext==None or re.match('([\w_-]+\.(?:' + ext + '))', f) )]
 
     return sorted(list_files)
 
-#Initialize the dictionary with the inputs
 def init_input_dictionary(config):
+    """
+    Initialize the dictionary with the inputs
+    """
     inputs = {}
 
     inputs["Image"] = []
@@ -227,8 +104,10 @@ def init_input_dictionary(config):
             
     return inputs
 
-#Initialize the dictionary with the outputs
 def init_output_dictionary(config):
+    """
+    Initialize the dictionary with the outputs
+    """
     outputs = {}
 
     idx_model = 0
@@ -248,53 +127,49 @@ def init_output_dictionary(config):
 
     return outputs
 
+def main():
+    args = getArgs()
+    config = loadConfig(args.config, verbose=True)
 
-#########################################################################
+    # Fail if arbitrary layers are not equal before training occurs.
+    inputs = init_input_dictionary(config)
+    outputs = init_output_dictionary(config)
 
-config = menu()
+    input_ports = len([x for x in inputs if "Layer" in x])
+    output_ports = len([x for x in outputs if "Model" in x or "Log file" in x])
+    if input_ports not in [output_ports, output_ports - 1]: # So it still works if Log File is added as an output. 
+        raise Exception(
+            'The number of input layers "rgba PNG - Layers" does not match the number of'
+            ' output "Adjustable models"\n'
+            "input_ports: " + str(input_ports) + " output_ports: " + str(output_ports)
+        )
 
-# Fail if arbitrary layers are not equal before training occurs.
+    # Sanity check
+    print ("Start preprocess")
+    layer_dict = preprocess.preprocess(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
+    print ("After pre_training_check")
 
-inputs = init_input_dictionary(config)
-outputs = init_output_dictionary(config)
+    # Create output models
+    output_models_path = {}
+    for i in range(input_ports):
+        output_models_path[str(i)] = outputs["Model " + str(i)][0][KEY_RESOURCE_PATH]
 
-# Sanity check
-print ("Start preprocess")
-layer_dict = preprocess.preprocess(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
-print ("After pre_training_check")
-
-input_ports = len([x for x in inputs if "Layer" in x])
-output_ports = len([x for x in outputs if "Model" in x or "Log file" in x])
-if input_ports not in [output_ports, output_ports - 1]: # So it still works if Log File is added as an output. 
-    raise Exception(
-        'The number of input layers "rgba PNG - Layers" does not match the number of'
-        ' output "Adjustable models"\n'
-        "input_ports: " + str(input_ports) + " output_ports: " + str(output_ports)
+    # Call in training function
+    status = training.train_msae(
+        inputs=layer_dict,
+        num_labels=input_ports,
+        height=config.patch_height,
+        width=config.patch_width,
+        output_path=output_models_path,
+        file_selection_mode=config.file_selection_mode,
+        sample_extraction_mode=config.sample_extraction_mode,
+        epochs=config.max_epochs,
+        number_samples_per_class=config.number_samples_per_class,
+        batch_size=config.batch_size,
+        patience=config.patience
     )
 
-# Create output models
-output_models_path = {}
+    print("Finishing the Fast CM trainer job.")
 
-for i in range(input_ports):
-    output_models_path[str(i)] = outputs["Model " + str(i)][0][KEY_RESOURCE_PATH]
-    # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
-
-# Call in training function
-status = training.train_msae(
-    inputs=layer_dict,
-    num_labels=input_ports,
-    height=config.patch_height,
-    width=config.patch_width,
-    output_path=output_models_path,
-    file_selection_mode=config.file_selection_mode,
-    sample_extraction_mode=config.sample_extraction_mode,
-    epochs=config.max_epochs,
-    number_samples_per_class=config.number_samples_per_class,
-    batch_size=config.batch_size,
-    patience=config.patience
-)
-
-# THIS IS ONLY CREATING THE MODEL 0 FILE!!!!!!
-print("Finishing the Fast CM trainer job.")
-
-
+if __name__ == "__main__":
+    main()

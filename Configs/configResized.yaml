@@ -1,0 +1,35 @@
+---
+# For training
+path_src: 'dataset/MS73/training/images'
+path_bg: 'dataset/MS73/training/layers/bg'
+path_regions: 'dataset/MS73/training/regions'
+path_layer:
+  - 'dataset/MS73/training/layers/staff'
+  - 'dataset/MS73/training/layers/neume'
+  - 'dataset/MS73/training/layers/text'
+path_out: 
+  - 'Results/model_background.hdf5'
+  - 'Results/model_staff.hdf5'
+  - 'Results/model_neume.hdf5'
+  - 'Results/model_text.hdf5'
+
+# For evaluating
+#path_ckpt: # Load ckpts from here
+#  - 'Resources/MS73Ckpts_1000/MS73_train_BG_w256_n1000.h5'
+#  - 'Resources/MS73Ckpts_1000/MS73_train_staff_w256_n1000.h5'
+#  - 'Resources/MS73Ckpts_1000/MS73_train_neumes_w256_n1000.h5'
+#testset: # A list of test images
+#  - "Resources/MS73ClassifyTc/Image - 040.png"
+#  - "Resources/MS73ClassifyTc/Image - 068.png"
+
+# Shared setting
+patch_height: 256
+patch_width: 256
+
+number_samples_per_class: 1000
+batch_size: 32
+patience: 15
+max_epochs: 50
+
+sample_extraction_mode: "RANDOM"
+file_selection_mode: "SHUFFLE"
