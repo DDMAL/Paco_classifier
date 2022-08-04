@@ -13,27 +13,35 @@ def getMaskFromRegion(region_path):
     Return:
         A np.ndarray of shape (W, H) and type bool. Pixels in the selected region are True.
     """
-    mask = cv2.imread(region_path, cv2.IMREAD_UNCHANGED)[..., -1]
+    mask = open_image(region_path)[..., -1]
     mask = (mask == 255)
     return mask
 
 def writeImgLayer(target, path):
     *path_prefix, target_name = path.split("/")
-    filename = osp.join(*path_prefix, "{}-cropped.png".format(target_name))
-    cv2.imwrite(filename, target)
+    target_name = target_name.split(".")[0]
+    filename = osp.join(*path_prefix, "{}-cropped.npy".format(target_name))
+    np.save(filename, target)
 
     return filename
 
-def preprocess(inputs, patch_height, patch_width):
+def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per_class):
     """
     Run a bunch of preprocessing steps in this function. Currently we have:
     1. extract X/Y/W/H from region mask and crop images and layers first
     """
+    # Check if batch size is less than number of samples per class
+    logging.info("Checking batch size")
+    checkBatch(batch_size, number_samples_per_class)
+    # Check if all images are larger than or equal to patch height and patch width
+    num_pages_training = len(inputs["Image"])
+
     layer_key_list = [k for k in inputs.keys() if "Image" not in k and "regions" not in k]
+    check_empty_dict = {k: 0 for k in inputs.keys() if "Image" not in k and "regions" not in k}
 
     for idx in range(len(inputs["rgba PNG - Selected regions"])): # Select Region
         region_path = inputs["rgba PNG - Selected regions"][idx]["resource_path"]
-        mask = getMaskFromRegion(region_path) 
+        mask = getMaskFromRegion(region_path)
 
         # Extract (x, y, w, h) from region mask
         X, Y, W, H = cv2.boundingRect(mask.astype(np.uint8))
@@ -44,11 +52,46 @@ def preprocess(inputs, patch_height, patch_width):
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)[Y:Y+H, X:X+W, :]  # RGB, uint8
         new_path = writeImgLayer(img, img_path)
         inputs["Image"][idx]["resource_path"] = new_path
-
+        
         for layer_key in layer_key_list: # Bg, neumes, staff. Exclude Image and Region
+            logging.info("Checking layer {}".format(layer_key))
             layer_path = inputs[layer_key][idx]["resource_path"]
-
             # Crop layer and write layer
-            layer = cv2.imread(layer_path, cv2.IMREAD_UNCHANGED)[Y:Y+H, X:X+W, :]  # 4-channel
+            layer = open_image(layer_path)[Y:Y+H, X:X+W, :]  # 4-channel
+            # Check if image size is larger or equal to patch size
+            check_size(layer, patch_height, patch_width)
+            # Check if image is non-empty if it isn't original image
+            check_empty_dict[layer_key] += check_empty(layer)
+
             new_path = writeImgLayer(layer, layer_path)
             inputs[layer_key][idx]["resource_path"] = new_path
+    
+    for layer in check_empty_dict:
+        # Check if an entire layer is does not only contain empty images
+        if check_empty_dict[layer] >= num_pages_training:
+            raise Exception('All images in layer {} are empty'.format(layer_key))
+
+def check_size(img, patch_height, patch_width):
+    if img.shape[0] < patch_height:
+        raise ValueError('Patch height of {} is larger than image height of {}'.format(patch_height, img.shape[0]))
+    if img.shape[1] < patch_width:
+        raise ValueError('Patch height of {} is larger than image height of {}'.format(patch_width, img.shape[1]))
+
+def check_empty(img):
+    TRANSPARENCY = 3
+    bg_mask = (img[:, :, TRANSPARENCY] == 255)
+    
+    return int(np.sum(bg_mask) == 0)
+
+def checkBatch(batch_size, number_samples_per_class):
+    if batch_size > number_samples_per_class:
+        raise ValueError("Not enough samples for on batch, got batchsize: {} and number_samples_per_class: {}".format(batch_size, number_samples_per_class))
+
+def open_image(image_path):
+    file_obj = cv2.imread(image_path, cv2.IMREAD_UNCHANGED,)  # 4-channel
+    if file_obj is None : 
+        raise Exception(
+            'It is not possible to load the image\n'
+            "Path: " + str(image_path)
+        )
+    return file_obj
