@@ -260,7 +260,7 @@ outputs = init_output_dictionary(config)
 
 # Sanity check
 print ("Start preprocess")
-preprocess.preprocess(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
+layer_dict = preprocess.preprocess(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
 print ("After pre_training_check")
 
 input_ports = len([x for x in inputs if "Layer" in x])
@@ -281,7 +281,7 @@ for i in range(input_ports):
 
 # Call in training function
 status = training.train_msae(
-    inputs=inputs,
+    inputs=layer_dict,
     num_labels=input_ports,
     height=config.patch_height,
     width=config.patch_width,
