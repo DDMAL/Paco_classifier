@@ -169,71 +169,24 @@ def threadsafe_generator(f):
 
     return g
 
-#Load a Ground-truth image and apply the region mask if it is given
-def loadLayer(path_file):
-    file_obj = np.load(path_file)
-    if file_obj is None : 
-        raise Exception(
-            'It is not possible to load the image\n'
-            "Path: " + str(path_file)
-        )
-
-    TRANSPARENCY = 3
-    bg_mask = (file_obj[:, :, TRANSPARENCY] == 255)
-    
-    return bg_mask
-
-def getLayer(inputs, idx_label, idx_file):
-
-    if idx_label == 0:
-        gt_path_file = inputs[KEY_BACKGROUND_LAYER][idx_file][KEY_RESOURCE_PATH]
-    else:
-        input_ports = len([x for x in inputs if "Layer" in x])
-        if idx_label >= input_ports : # If we try to access to an non-existing layer 
-            raise Exception(
-                'The index of the layer does not exist\n'
-                "input_ports: " + str(input_ports) + " index acceded: " + str(idx_label)
-            )
-
-        gt_path_file = inputs["rgba PNG - Layer {layer_num}".format(layer_num=idx_label)][idx_file][KEY_RESOURCE_PATH]
-        
-    gt = loadLayer(gt_path_file)
-    return gt
-
-def get_image_with_gt(inputs, idx_file, idx_label):
-
-    # Required input ports
-    # TODO assert that all layers have the same number of inputs (otherwise it will crack afterwards)
-    number_of_training_pages = len(inputs["Image"])
-    if idx_file >= number_of_training_pages : # If we try to access to an non-existing layer 
-        raise Exception(
-            'The index of the file does not exist\n'
-            "input images: " + str(number_of_training_pages) + " index acceded: " + str(idx_file)
-        )
-
-    gt = getLayer(inputs, idx_label, idx_file)
-    gr = np.load(inputs["Image"][idx_file][KEY_RESOURCE_PATH])  # 3-channel
-    gr = (255.-gr) / 255.
-
-    return gr, gt
-
-def appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks):
+def appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, index):
     gr_sample = gr[
             row : row + patch_height, col : col + patch_width
         ]  # Greyscale image
     gt_sample = gt[
         row : row + patch_height, col : col + patch_width
     ]  # Ground truth
-    gr_chunks.append(gr_sample)
-    gt_chunks.append(gt_sample)
+    gr_chunks[index] = gr_sample
+    gt_chunks[index] = gt_sample
 
 
 
 def createGeneratorSingleFileSequentialExtraction(inputs, idx_file, idx_label, row, col, patch_height, patch_width, batch_size):
-    gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
+    gr = inputs["Image"][0][idx_file]
+    gt = inputs[idx_label][0][idx_file]
 
-    gr_chunks = []
-    gt_chunks = []
+    gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
+    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
 
     hstride = patch_height // 2
     wstride = patch_width // 2
@@ -241,14 +194,10 @@ def createGeneratorSingleFileSequentialExtraction(inputs, idx_file, idx_label, r
     count = 0
     for r in range(row, gr.shape[0] - patch_height, hstride):
         for c in range(col, gr.shape[1] - patch_width, wstride):
-            appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks)
+            appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, count)
             count +=1
             if count % batch_size == 0:
-                gr_chunks_arr = np.array(gr_chunks)
-                gt_chunks_arr = np.array(gt_chunks)
-                # convert gr_chunks and gt_chunks to the numpy arrays that are yield below
-
-                return gr_chunks_arr, gt_chunks_arr, r, c  # convert into npy before yielding
+                return gr_chunks, gt_chunks, r, c
 
 
 
@@ -276,23 +225,19 @@ def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_
     for i in range(batch_size):
         row = x_coords[i]
         col = y_coords[i]
-        appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks)
+        appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, i)
 
 
 def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
+    gr = inputs["Image"][0][idx_file]
+    gt = inputs[idx_label][0][idx_file]
 
-    
-    gr_chunks = []
-    gt_chunks = []
+    gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
+    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
 
     extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
 
-    gr_chunks_arr = np.array(gr_chunks)
-    gt_chunks_arr = np.array(gt_chunks)
-    # convert gr_chunks and gt_chunks to the numpy arrays that are yield below
-
-    return gr_chunks_arr, gt_chunks_arr  # convert into npy before yielding
+    return gr_chunks, gt_chunks  # convert into npy before yielding
 
 
 def get_stride(patch_height, patch_width):
@@ -303,63 +248,39 @@ def createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_heigh
     
     hstride, wstride = get_stride(patch_height, patch_width)
     
-    gr_chunks = []
-    gt_chunks = []
+    gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
+    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
 
-    gr, gt = get_image_with_gt(inputs, idx_file, idx_label)
+    gr = inputs["Image"][0][idx_file]
+    gt = inputs[idx_label][0][idx_file]
     count = 0
     for row in range(0, gr.shape[0] - patch_height, hstride):
         for col in range(0, gr.shape[1] - patch_width, wstride):
-            appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks)
+            appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, count)
             count +=1
             if count % batch_size == 0:
-                gr_chunks_arr = np.array(gr_chunks)
-                gt_chunks_arr = np.array(gt_chunks)
-                # convert gr_chunks and gt_chunks to the numpy arrays that are yield below
-
-                yield gr_chunks_arr, gt_chunks_arr  # convert into npy before yielding
-                gr_chunks = []
-                gt_chunks = []
+                yield gr_chunks, gt_chunks
+                gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
+                gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
                 count = 0
-
-def deleteImagesWith(inputs, idx_label):
-    for idx_file in range(len(inputs["Image"])-1, -1, -1):
-        
-        gt = getLayer(inputs, idx_label, idx_file)
-
-        if (np.sum(gt) == 0):
-            inputs["Image"].pop(idx_file)
-            inputs[KEY_BACKGROUND_LAYER].pop(idx_file)
-    return inputs
 
 @threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
 def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode):
-    inputs_copy = copy.deepcopy(inputs)
-    inputs_copy = deleteImagesWith(inputs_copy, idx_label)
-
     print("Creating {} generator...".format(str(file_selection_mode).lower()))
 
-    if file_selection_mode == FileSelectionMode.SHUFFLE:
-        list_idx_files = list(range(len(inputs_copy["Image"])))
-        rd.shuffle(list_idx_files)
-    elif file_selection_mode == FileSelectionMode.DEFAULT:
-        list_idx_files = list(range(len(inputs_copy["Image"])))
-    elif file_selection_mode == FileSelectionMode.RANDOM:
-        number_of_training_pages = len(inputs_copy["Image"])
-        list_idx_files = [np.random.randint(number_of_training_pages)]
-    else:
-        raise Exception(
-            'The file extraction mode does not exist.\n'
-        ) 
+    # Check other file_selection mode and sample_extraction mode
+    list_idx_files = inputs[idx_label][1]
 
     while True:
-        if file_selection_mode == FileSelectionMode.SHUFFLE:
+        if file_selection_mode == FileSelectionMode.RANDOM:
+            list_idx_files = [np.random.randint(len(inputs[idx_label][1]))]
+        elif file_selection_mode == FileSelectionMode.SHUFFLE:
             rd.shuffle(list_idx_files)
         for idx_file in list_idx_files:
             if sample_extraction_mode == SampleExtractionMode.RANDOM:
-                yield extractRandomSamples(inputs_copy, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
+                yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
             elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                for i in createGeneratorSequentialExtraction(inputs_copy, idx_file, idx_label, patch_height, patch_width, batch_size):
+                for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
                     yield i
             else:
                 raise Exception(
@@ -370,7 +291,9 @@ def getTrain(inputs, num_labels, patch_height, patch_width, batch_size, file_sel
     generator_labels = []
 
     print("num_labels", num_labels)
-    for idx_label in range(num_labels):
+    for idx_label in inputs:
+        if idx_label == "Image":
+            continue
         print("idx_label", idx_label)
         generator_label = createGenerator(
             inputs, idx_label, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode
@@ -389,7 +312,7 @@ def get_steps_per_epoch(inputs, number_samples_per_class, patch_height, patch_wi
         number_samples = 0
 
         for idx_file in range(len(inputs["Image"])):
-            gr = cv2.imread(inputs["Image"][idx_file][KEY_RESOURCE_PATH], cv2.IMREAD_COLOR)  # 3-channel
+            gr = inputs["Image"][0][idx_file]
             number_samples += ((gr.shape[0] - patch_height) // hstride) * ((gr.shape[1] - patch_width) // wstride)
 
         return number_samples // batch_size
@@ -423,7 +346,7 @@ def train_msae(
         print("Training a new model for label #{}".format(str(label)))
         # Pretrained weights
         model_name = "Model {}".format(label)
-        if models != None and model_name in models:
+        if models and model_name in models:
             model = load_model(models[model_name][0]['resource_path'])
         else:
             model = get_sae(height=height, width=width)
