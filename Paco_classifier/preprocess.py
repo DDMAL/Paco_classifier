@@ -19,7 +19,18 @@ def getMaskFromRegion(region_path):
 def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per_class):
     """
     Run a bunch of preprocessing steps in this function. Currently we have:
-    1. extract X/Y/W/H from region mask and crop images and layers first
+    1. Extract X/Y/W/H from the region mask and crop images and layers first
+    2. The image width/height should be not less than the patch width/height.
+    3. Keep a list to save the indices of nonempty layers. The model is trained on nonempty layers.
+    4. Track the number of empty layers. It should be less than the number of images 
+        (at least one trainable data).
+
+    Return:
+        {<rodan port name>:[[np.ndarray, ...], [int, int, ...]]}
+            A dictionary with the rodan port names ('Image', 'rgba PNG - Layer 0 (Background)', ...)
+            as keys and lists of two lists as their items.
+            1st list: processed/cropped loaded images/layers represented as np.ndarray with shape (W, H, 3, dtype=float) or (W, H, dtyp=bool)
+            2nd list: the indices of nonempty layers. The list is empty in dict['Image']
     """
     # Check if batch size is less than number of samples per class
     logging.info("Checking batch size")
