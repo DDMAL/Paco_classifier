@@ -1,7 +1,7 @@
 import yaml
 import argparse
 
-from Paco_classifier.training_engine_sae import FileSelectionMode, SampleExtractionMode
+from Paco_classifier.data_loader import FileSelectionMode, SampleExtractionMode
 
 kPATH_IMAGES_DEFAULT = "datasets/images"
 kPATH_REGION_MASKS_DEFAULT = "datasets/regions"

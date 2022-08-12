@@ -1,13 +1,7 @@
 from __future__ import division
 
 import os	
-import copy	
-import threading	
-from enum import Enum	
 import logging	
-import random as rd	
-import cv2	
-import numpy as np
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate	
@@ -17,80 +11,12 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.backend import image_data_format	
 import tensorflow as tf
 
-kPIXEL_VALUE_FOR_MASKING = -1
-
-class FileSelectionMode(Enum):
-    RANDOM,     \
-    SHUFFLE,    \
-    DEFAULT     \
-    = range(3)
-
-    def __str__(self):
-        return self.name
-
-    @staticmethod
-    def from_string(s):
-        try:
-            return FileSelectionMode[s]
-        except KeyError:
-            raise ValueError()
-
-class SampleExtractionMode(Enum):
-    RANDOM,     \
-    SEQUENTIAL  \
-    = range(2)
-
-    def __str__(self):
-        return self.name
-
-    @staticmethod
-    def from_string(s):
-        try:
-            return SampleExtractionMode[s]
-        except KeyError:
-            raise ValueError()
-
-# ===========================
-#       SETTINGS
-# ===========================
-
-# gpu_options = tf.GPUOptions(
-#     allow_growth=True,
-#     per_process_gpu_memory_fraction=0.40
-# )
-# sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-# keras.backend.tensorflow_backend.set_session(sess)
-VALIDATION_SPLIT = 0.2
-# BATCH_SIZE = 16
-# ===========================
-
-
-# ===========================
-#       CONSTANTS
-# ===========================
-KEY_BACKGROUND_LAYER = "rgba PNG - Layer 0 (Background)"
-KEY_RESOURCE_PATH = "resource_path"
-# ===========================
-
-class threadsafe_iter:
-    """Takes an iterator/generator and makes it thread-safe by
-    serializing call to the `next` method of given iterator/generator.
-    """
-
-    def __init__(self, it):
-        self.it = it
-        self.lock = threading.Lock()
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        with self.lock:
-            return next(self.it)
+from .data_loader import FileSelectionMode, SampleExtractionMode, getTrain
 
 def get_sae(height, width, pretrained_weights=None):
     ff = 32
     channels = 3
+    kPIXEL_VALUE_FOR_MASKING = -1
 
     img_shape = (height, width, channels)
     if image_data_format() == "channels_first":
@@ -160,148 +86,8 @@ def get_sae(height, width, pretrained_weights=None):
 
     return model
 
-
-def threadsafe_generator(f):
-    """A decorator that takes a generator function and makes it thread-safe."""
-
-    def g(*a, **kw):
-        return threadsafe_iter(f(*a, **kw))
-
-    return g
-
-def appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, index):
-    gr_sample = gr[
-            row : row + patch_height, col : col + patch_width
-        ]  # Greyscale image
-    gt_sample = gt[
-        row : row + patch_height, col : col + patch_width
-    ]  # Ground truth
-    gr_chunks[index] = gr_sample
-    gt_chunks[index] = gt_sample
-
-
-
-def createGeneratorSingleFileSequentialExtraction(inputs, idx_file, idx_label, row, col, patch_height, patch_width, batch_size):
-    gr = inputs["Image"][0][idx_file]
-    gt = inputs[idx_label][0][idx_file]
-
-    gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
-    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height), dtype=bool)
-
-    hstride = patch_height // 2
-    wstride = patch_width // 2
-    
-    count = 0
-    for r in range(row, gr.shape[0] - patch_height, hstride):
-        for c in range(col, gr.shape[1] - patch_width, wstride):
-            appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, count)
-            count +=1
-            if count % batch_size == 0:
-                return gr_chunks, gt_chunks, r, c
-
-
-
-def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks):
-    potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
-
-    num_coords = len(potential_training_examples[0])
-
-    if num_coords >= batch_size:
-
-        index_coords_selected = [
-            np.random.randint(0, num_coords) for _ in range(batch_size)
-        ]
-        x_coords = potential_training_examples[0][index_coords_selected]
-        y_coords = potential_training_examples[1][index_coords_selected]
-    else:
-        x_coords = [
-            np.random.randint(0, gr.shape[0]) for _ in range(batch_size)
-        ]
-
-        y_coords = [
-            np.random.randint(0, gr.shape[1]) for _ in range(batch_size)
-        ]
-
-    for i in range(batch_size):
-        row = x_coords[i]
-        col = y_coords[i]
-        appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, i)
-
-
-def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    gr = inputs["Image"][0][idx_file]
-    gt = inputs[idx_label][0][idx_file]
-
-    gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
-    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height), dtype=bool)
-
-    extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
-
-    return gr_chunks, gt_chunks  # convert into npy before yielding
-
-
 def get_stride(patch_height, patch_width):
     return patch_height // 2, patch_width // 2
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-    
-    hstride, wstride = get_stride(patch_height, patch_width)
-    
-    gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
-    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
-
-    gr = inputs["Image"][0][idx_file]
-    gt = inputs[idx_label][0][idx_file]
-    count = 0
-    for row in range(0, gr.shape[0] - patch_height, hstride):
-        for col in range(0, gr.shape[1] - patch_width, wstride):
-            appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, count)
-            count +=1
-            if count % batch_size == 0:
-                yield gr_chunks, gt_chunks
-                gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
-                gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
-                count = 0
-
-@threadsafe_generator  # Credit: https://anandology.com/blog/using-iterators-and-generators/
-def createGenerator(inputs, idx_label, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode):
-    print("Creating {} generator...".format(str(file_selection_mode).lower()))
-
-    # Check other file_selection mode and sample_extraction mode
-    list_idx_files = inputs[idx_label][1]
-
-    while True:
-        if file_selection_mode == FileSelectionMode.RANDOM:
-            list_idx_files = [np.random.randint(len(inputs[idx_label][1]))]
-        elif file_selection_mode == FileSelectionMode.SHUFFLE:
-            rd.shuffle(list_idx_files)
-        for idx_file in list_idx_files:
-            if sample_extraction_mode == SampleExtractionMode.RANDOM:
-                yield extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode)
-            elif sample_extraction_mode == SampleExtractionMode.SEQUENTIAL:
-                for i in createGeneratorSequentialExtraction(inputs, idx_file, idx_label, patch_height, patch_width, batch_size):
-                    yield i
-            else:
-                raise Exception(
-                    'The sample extraction mode does not exist.\n'
-                )
-
-def getTrain(inputs, num_labels, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode):
-    generator_labels = []
-
-    print("num_labels", num_labels)
-    for idx_label in inputs:
-        if idx_label == "Image":
-            continue
-        print("idx_label", idx_label)
-        generator_label = createGenerator(
-            inputs, idx_label, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode
-        )
-        generator_labels.append(generator_label)
-        print(generator_labels)
-
-    return generator_labels
 
 def get_steps_per_epoch(inputs, number_samples_per_class, patch_height, patch_width, batch_size, sample_extraction_mode):
 

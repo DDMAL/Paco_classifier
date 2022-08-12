@@ -4,3 +4,4 @@ from . import recognition_engine
 from . import fast_trainer_lib
 
 from . import preprocess
+from . import data_loader
