@@ -186,7 +186,7 @@ def createGeneratorSingleFileSequentialExtraction(inputs, idx_file, idx_label, r
     gt = inputs[idx_label][0][idx_file]
 
     gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
-    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
+    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height), dtype=bool)
 
     hstride = patch_height // 2
     wstride = patch_width // 2
@@ -233,7 +233,7 @@ def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width,
     gt = inputs[idx_label][0][idx_file]
 
     gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
-    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
+    gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height), dtype=bool)
 
     extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
 
