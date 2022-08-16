@@ -146,7 +146,7 @@ def main():
 
     # Sanity check
     print ("Start preprocess")
-    layer_dict = preprocess.preprocess(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
+    data_container = preprocess.preprocess(inputs, config.batch_size, config.patch_height, config.patch_width, config.number_samples_per_class)
     print ("After pre_training_check")
 
     # Create output models
@@ -156,7 +156,7 @@ def main():
 
     # Call in training function
     status = training.train_msae(
-        inputs=layer_dict,
+        inputs=data_container,
         num_labels=input_ports,
         height=config.patch_height,
         width=config.patch_width,
