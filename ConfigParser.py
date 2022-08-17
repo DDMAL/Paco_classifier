@@ -36,8 +36,9 @@ def getDefaultConfig():
     'patience': kEARLY_STOPPING_PATIENCE_DEFAULT,
     'sample_extraction_mode': 'RANDOM',
     'file_selection_mode': 'SHUFFLE',
-    #'path_ckpt': [],
-    #'testset': [],
+    'path_ckpt': [],
+    'testset': [],
+    'threshold': 50,
     }
     return tmp
 
