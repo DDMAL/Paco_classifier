@@ -78,14 +78,15 @@ def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per
         # Crop image and write image to npy
         img_path = inputs["Image"][idx]["resource_path"]
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)[Y:Y+H, X:X+W, :]  # RGB, uint8
-        img = (255.-img) / 255.
-
-        img_path += ".npy"
-        np.save(img_path, img)
 
         # Creata data
         x_name = img_path.split("/")[-1]
         img_W, img_H, img_C = img.shape
+        if img_W < patch_width:
+            img_W = patch_width*2
+        if img_H < patch_height:
+            img_H = patch_height*2
+        img_path += ".npy"
         data_x = Data(x_name, img_path, bytes2Gb(img_W * img_H * img_C * img.itemsize))
 
         
@@ -113,6 +114,9 @@ def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per
                 # Add the XY pair to the data container
                 data_y = Data(x_name, layer_path, bytes2Gb(layer_W * layer_H * layer_C * bg_mask.itemsize))
                 data_container.addXYPair(x_name, layer_key, data_x, data_y)
+
+        img = (255.-img) / 255.
+        np.save(img_path, img)
     
     for layer in check_empty_dict:
         # Check if an entire layer is does not only contain empty images
