@@ -124,8 +124,8 @@ def train_msae(
 
     # Create ground_truth
     print("Creating data generators...")
-    generators = getTrain(inputs, num_labels, height, width, batch_size, file_selection_mode, sample_extraction_mode)
-    generators_validation = getTrain(inputs, num_labels, height, width, batch_size, FileSelectionMode.DEFAULT, SampleExtractionMode.RANDOM)
+    generators = getTrain(inputs, height, width, batch_size, file_selection_mode, sample_extraction_mode)
+    generators_validation = getTrain(inputs, height, width, batch_size, FileSelectionMode.DEFAULT, SampleExtractionMode.RANDOM)
 
     # Training loop
     for label in range(num_labels):
@@ -156,7 +156,7 @@ def train_msae(
             verbose=2,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
-            validation_steps=len(inputs["Image"]),
+            validation_steps=len(inputs.meta["Image"]),
             callbacks=callbacks_list,
             epochs=epochs
         )

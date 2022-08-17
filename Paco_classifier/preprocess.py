@@ -3,7 +3,28 @@ import cv2
 import logging
 import os.path as osp
 
+from .data_loader import Data, DataContainer
+
 logging.getLogger().setLevel(logging.INFO)
+
+def bytes2Gb(b):
+    return b / (1024**3)
+
+def getMemoryLimit():
+    """
+    Read from /sys/fs/cgroup/memory/memory.limit_in_bytes to see the RAM size
+    of the contaier.
+
+    Return:
+        RAM size in Gb
+
+    from: https://carlosbecker.com/posts/python-docker-limits/
+    """
+    mem = 0
+    if osp.isfile('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
+        with open('/sys/fs/cgroup/memory/memory.limit_in_bytes') as limit:
+            mem = int(limit.read()) # bytes
+    return bytes2Gb(mem)
 
 def getMaskFromRegion(region_path):
     """
@@ -40,23 +61,33 @@ def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per
 
     layer_key_list = [k for k in inputs.keys() if "Image" not in k and "regions" not in k]
     check_empty_dict = {k: 0 for k in inputs.keys() if "Image" not in k and "regions" not in k}
-    layer_dict = {k: [[],[]] for k in inputs.keys() if "regions" not in k}
+
+    # Get RAM limit
+    ram_limit = max(getMemoryLimit() - 5, 0)
+    data_container = DataContainer(ram_limit=ram_limit)
 
     for idx in range(len(inputs["rgba PNG - Selected regions"])): # Select Region
         logging.info("Image {}".format(idx + 1))
         region_path = inputs["rgba PNG - Selected regions"][idx]["resource_path"]
+
         mask = getMaskFromRegion(region_path)
 
         # Extract (x, y, w, h) from region mask
         X, Y, W, H = cv2.boundingRect(mask.astype(np.uint8))
 
+        # Crop image and write image to npy
         img_path = inputs["Image"][idx]["resource_path"]
-
-        # Crop image and write image
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)[Y:Y+H, X:X+W, :]  # RGB, uint8
         img = (255.-img) / 255.
-        # Add image to layer dictionary
-        layer_dict["Image"][0].append(img)
+
+        img_path += ".npy"
+        np.save(img_path, img)
+
+        # Creata data
+        x_name = img_path.split("/")[-1]
+        img_W, img_H, img_C = img.shape
+        data_x = Data(x_name, img_path, bytes2Gb(img_W * img_H * img_C * img.itemsize))
+
         
         for layer_key in layer_key_list: # Bg, neumes, staff. Exclude Image and Region
             logging.info("Checking {}".format(layer_key))
@@ -67,18 +98,24 @@ def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per
             check_size(layer, patch_height, patch_width)
             # Check if image is non-empty if it isn't original image
             empty, bg_mask = check_empty(layer)
+            layer_W, layer_H = bg_mask.shape
+            layer_C = 1
             check_empty_dict[layer_key] += empty
-            if not empty:
-                layer_dict[layer_key][1].append(idx)
-            # Add image to layer dictionary
-            layer_dict[layer_key][0].append(bg_mask)
+            if not empty and bytes2Gb(layer_W*layer_H*layer_C*bg_mask.itemsize + img_W*img_H*img_C*img.itemsize) < ram_limit:
+                # Save Y as npy file
+                layer_path += ".npy"
+                np.save(layer_path, bg_mask)
+
+                # Add the XY pair to the data container
+                data_y = Data(x_name, layer_path, bytes2Gb(layer_W * layer_H * layer_C * bg_mask.itemsize))
+                data_container.addXYPair(x_name, layer_key, data_x, data_y)
     
     for layer in check_empty_dict:
         # Check if an entire layer is does not only contain empty images
         if check_empty_dict[layer] >= num_pages_training:
             raise Exception('All images in layer {} are empty'.format(layer_key))
     
-    return layer_dict
+    return data_container
 
 def check_size(img, patch_height, patch_width):
     if img.shape[0] < patch_height:
