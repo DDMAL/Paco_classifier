@@ -14,13 +14,15 @@ path_out:
   - 'Results/model_text.hdf5'
 
 # For evaluating
-#path_ckpt: # Load ckpts from here
-#  - 'Resources/MS73Ckpts_1000/MS73_train_BG_w256_n1000.h5'
-#  - 'Resources/MS73Ckpts_1000/MS73_train_staff_w256_n1000.h5'
-#  - 'Resources/MS73Ckpts_1000/MS73_train_neumes_w256_n1000.h5'
-#testset: # A list of test images
-#  - "Resources/MS73ClassifyTc/Image - 040.png"
-#  - "Resources/MS73ClassifyTc/Image - 068.png"
+path_ckpt: # Load ckpts from here
+  - 'Ckpts/model_background.hdf5'
+  - 'Ckpts/model_staff.hdf5'
+  - 'Ckpts/model_neume.hdf5'
+  - 'Ckpts/model_text.hdf5'
+testset: # A list of test images
+  - "TestRezizedMs73/image_040.png"
+  - "TestRezizedMs73/image_068.png"
+threshold: 50
 
 # Shared setting
 patch_height: 256
