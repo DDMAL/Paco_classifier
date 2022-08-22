@@ -272,11 +272,11 @@ def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_
         y_coords = potential_training_examples[1][index_coords_selected]
     else:
         x_coords = [
-            np.random.randint(0, gr.shape[0] + 1 - patch_width) for _ in range(batch_size)
+            np.random.randint(0, gr.shape[0] + 1 - patch_height) for _ in range(batch_size)
         ]
 
         y_coords = [
-            np.random.randint(0, gr.shape[1] + 1 - patch_height) for _ in range(batch_size)
+            np.random.randint(0, gr.shape[1] + 1 - patch_width) for _ in range(batch_size)
         ]
 
     for i in range(batch_size):
