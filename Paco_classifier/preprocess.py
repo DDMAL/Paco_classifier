@@ -41,17 +41,17 @@ def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per
     """
     Run a bunch of preprocessing steps in this function. Currently we have:
     1. Extract X/Y/W/H from the region mask and crop images and layers first
-    2. The image width/height should be not less than the patch width/height.
-    3. Keep a list to save the indices of nonempty layers. The model is trained on nonempty layers.
-    4. Track the number of empty layers. It should be less than the number of images 
-        (at least one trainable data).
+    2. If the image width/height is less than the patch widht/height, randomly select 
+       pixels and pad to the image to make its width/height equals to 2*patch width/height.
+    3. Preprocess and turn images into (H, W, 3, dtype=float64 between 0.0 and 1.0), layers into
+       (H, W, dtype=bool)
+    4. Write the processed images/layers into .npy file.
+    5. Calculate required RAM size (Gb) of each.
+    6. For each image, save data_loader.Data(path to npy file, RAM size, its unique key)
+    7. For each layer, save data_loader.Data(path to npy file, RAM size, the unique key to access its image)
 
     Return:
-        {<rodan port name>:[[np.ndarray, ...], [int, int, ...]]}
-            A dictionary with the rodan port names ('Image', 'rgba PNG - Layer 0 (Background)', ...)
-            as keys and lists of two lists as their items.
-            1st list: processed/cropped loaded images/layers represented as np.ndarray with shape (W, H, 3, dtype=float) or (W, H, dtyp=bool)
-            2nd list: the indices of nonempty layers. The list is empty in dict['Image']
+        A data_loader.DataContainer class that stores each image/layer pair using data_loader.Data class.
     """
     # Check if batch size is less than number of samples per class
     logging.info("Checking batch size")
