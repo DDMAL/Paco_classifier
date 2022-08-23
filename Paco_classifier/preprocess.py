@@ -80,7 +80,7 @@ def preprocess(inputs, batch_size, patch_height, patch_width, number_samples_per
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)[Y:Y+H, X:X+W, :]  # RGB, uint8
 
         # Creata data
-        x_name = img_path.split("/")[-1]
+        x_name = img_path.split("/")[-1]+"-{}".format(idx)
         img_W, img_H, img_C = img.shape
         if img_W < patch_width:
             img_W = patch_width*2
