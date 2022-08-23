@@ -282,7 +282,11 @@ def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_
     for i in range(batch_size):
         row = x_coords[i]
         col = y_coords[i]
-        appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, i)
+        try:
+            appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_chunks, i)
+        except ValueError as e:
+            error_msg = "Try try to extract (row={}, col={}, h={}, w={})".format(row, col, patch_height, patch_width)
+            raise ValueError(error_msg) from e
 
 
 def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
@@ -293,7 +297,15 @@ def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width,
     gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
     gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
 
-    extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
+    try:
+        extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
+    except ValueError as e:
+        error_msg = "Failed to load y_path:{}, y_dim:{}, x_name:{}, x_path{}, x_dim:{}".format(inputs.meta[idx_label]["working"][idx_file].path, 
+                                                    inputs.meta[idx_label]["working"][idx_file].img.shape,
+                                                    inputs.meta[idx_label]["working"][idx_file].x_name,
+                                                    inputs.meta["Image"][gr_name].path,
+                                                    inputs.meta["Image"][gr_name].img.shape)
+        raise ValueError(error_msg) from e
 
     return gr_chunks, gt_chunks  # convert into npy before yielding
 
