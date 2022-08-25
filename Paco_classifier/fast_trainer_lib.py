@@ -3,8 +3,8 @@ This file provides the code for model generation.
 Can be used in the standalone file or within Rodan.
 """
 
-import os
 import logging
+import os
 
 from . import training_engine_sae as training
 
@@ -20,6 +20,8 @@ class PacoTrainer:
         sample_extraction_mode,
         inputs,
         outputs,
+        models,
+        patience,
     ):
         self.batch_size = batch_size
         self.patch_height = patch_height
@@ -30,13 +32,15 @@ class PacoTrainer:
         self.sample_extraction_mode = sample_extraction_mode
         self.inputs = inputs
         self.outputs = outputs
+        self.models = models
+        self.patience = patience
 
         #file_selection_mode = training.FileSelectionMode.SHUFFLE
         #sample_extraction_mode = training.SampleExtractionMode.RANDOM
 
     def runTrainer(self):
 
-        input_ports = len([x for x in self.inputs if "Layer" in x])
+        input_ports = len([x for x in self.inputs.meta if "Layer" in x])
         output_ports = len([x for x in self.outputs if "Model" in x or "Log file" in x])
         if input_ports not in [output_ports, output_ports - 1]: # So it still works if Log File is added as an output. 
             raise Exception(
@@ -54,7 +58,7 @@ class PacoTrainer:
             # THIS IS NOT TAKING INTO ACCOUNT ANY FILE NOT NAMED MODEL IE BACKGROUND AND LOG!!!!
 
         # Call in training function
-        status = training.train_msae( # TODO: Including patience parameter for early stopping
+        status = training.train_msae(
             inputs=self.inputs,
             num_labels=input_ports,
             height=self.patch_height,
@@ -64,7 +68,9 @@ class PacoTrainer:
             sample_extraction_mode=self.sample_extraction_mode,
             epochs=self.max_number_of_epochs,
             number_samples_per_class=self.max_samples_per_class,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
+            models=self.models,
+            patience=self.patience
         )
         print("Finishing the Fast CM trainer job.")
         for i in range(input_ports):
