@@ -40,7 +40,7 @@ class PacoTrainer:
 
     def runTrainer(self):
 
-        # input_ports = len([x for x in self.inputs.meta if "Layer" in x])
+        input_ports = len([x for x in self.inputs.meta if "Layer" in x])
         # output_ports = len([x for x in self.outputs if "Model" in x or "Log file" in x])
         # if input_ports not in [output_ports, output_ports - 1]: # So it still works if Log File is added as an output. 
         #     raise Exception(
@@ -75,7 +75,8 @@ class PacoTrainer:
         )
         print("Finishing the Fast CM trainer job.")
         for i in range(input_ports):
+            model_name = "Background Model" if i == 0 else "Model " + str(i)
             os.rename(
                 output_models_path[str(i)],
-                self.outputs["Model " + str(i)][0]["resource_path"],
+                self.outputs[model_name][0]["resource_path"],
             )
