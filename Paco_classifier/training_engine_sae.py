@@ -131,7 +131,7 @@ def train_msae(
     for label in range(num_labels):
         print("Training a new model for label #{}".format(str(label)))
         # Pretrained weights
-        model_name = "Model {}".format(label)
+        model_name = "Background Model" if label == 0 else "Model {}".format(label)
         if models and model_name in models:
             model = load_model(models[model_name][0]['resource_path'])
         else:
