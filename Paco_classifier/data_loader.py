@@ -357,7 +357,7 @@ def createGenerator(inputs, layer_name, patch_height, patch_width, batch_size, f
 def getTrain(inputs, patch_height, patch_width, batch_size, file_selection_mode, sample_extraction_mode):
     generator_labels = []
 
-    for idx_label in inputs.meta.keys():
+    for idx_label in sorted(inputs.meta.keys()):
         if idx_label == "Image":
             continue
         generator_label = createGenerator(
