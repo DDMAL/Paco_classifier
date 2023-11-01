@@ -1,12 +1,15 @@
 # Paco-classifier
 
-Repository of the Rodan wrapper for Calvo classifier
+Repository of the Rodan wrapper for Paco's classifier. This is a layout analysis method that uses neural models based on auto-encoders to separate different layers of pixel-level information, such as staff lines, text, or musical symbols. This method is based on its previous version (Calvo Classifier), with some enhancements that enable training with partial annotations of images.
+
+This method has been accepted at the International Society for Music Information Retrieval Conference (ISMIR 2023) and the article describing it will be available through its proceedings.
+
 
 # Rodan Jobs definition
 This repository includes the following Rodan Jobs:
-- `Fast Pixelwise Analysis of Music Document` in **fast_calvo_classifier.py**
+- `Fast Pixelwise Analysis of Music Document` in **evaluation.py**
   - Available in the **GPU** Rodan queue.
-- `Training model for Patchwise Analysis of Music Document` in **fast_calvo_trainer.py**
+- `Training model for Patchwise Analysis of Music Document` in **Paco_classifier/fast_trainer_lib.py**
   - Available in the **GPU** Rodan queue.
 
 # Installation Dependencies
@@ -20,12 +23,12 @@ This repository includes the following Rodan Jobs:
   * scipy (0.19.1)
   * setuptools (36.0.1)
   * six (1.10.0)
-  * Tensorflow (1.5)
+  * Tensorflow (2.5.1)
   * opencv-python (3.2.0.7)
 
 ## Keras configuration
 
-Calvo's classifier needs *Keras* and *TensorFlow* to be installed. It can be easily done through **pip**. 
+Paco's classifier needs *Keras* and *TensorFlow* to be installed. It can be easily done through **pip**. 
 
 *Keras* works over both Theano and Tensorflow, so after the installation check **~/.keras/keras.json** so that it looks like:
 
@@ -41,11 +44,9 @@ Calvo's classifier needs *Keras* and *TensorFlow* to be installed. It can be eas
 
 # Mode of use for training the model
 
-There are two options:
-  * Through the module **fast_calvo_easy_training.py**. The parameters should be provided by console.
-  * Through the script **script_run_training.sh**. The parameters should be provided within this script, by modifying the corresponding values.
+Through the module **fast_training_local.py**. The parameters should be provided by console.
 
-Both are ready for receiving different parameters.
+The possible parameters are:
   * **-psr** `Path to the folder with the original images.` (**Default:** *datasets/images*)
   * **-prg** `Path to the folder with the mask regions.` (**Default:** *datasets/regions*)
   * **-pbg** `Path to the folder with the background ground-truth data.` (**Default:** *datasets/layers/background*)
@@ -65,7 +66,7 @@ Note that the parameters **-pgt** and **-out** are repeatable options. For inclu
 If you have 3 layers (background, staff, neumes), you have to provide the path folder to the background data with **-pbg**, the path folders to the data of the rest of layers through **-pgt** (parameter repeated for each additional layer) and the output path for the trained models for each layer, being the background model the first one, and the rest of output paths matching with the different layers provided by **-pgt**, considering the order in which they were provided. For example:
 
 ~~~
-  python -u fast_calvo_easy_training.py  
+  python -u fast_training_local.py  
             -psr datasets/images  
             -prg datasets/regions  
             -pbg datasets/layers/bg  
@@ -84,10 +85,6 @@ If you have 3 layers (background, staff, neumes), you have to provide the path f
             -sm RANDOM  
 ~~~
 
-When using **script_run_training.sh**, in console only it is necessary to run the script:
-~~~
-     ./script_run_training.sh`
-~~~
 
 Within that script, there are a set of parameters with an example of use. Each one of these variables matches with a parameter of the python code.
 
@@ -109,7 +106,7 @@ Within that script, there are a set of parameters with an example of use. Each o
 **IMPORTANT**: 
 **NUMBER_SAMPLES_PER_CLASS** cannot be smaller than **BATCH_SIZE**. The image width cannot be smaller than **WINDOW_WIDTH** and similarly, the image height cannot be smaller than **WINDOW_HEIGHT**. Ground truth portions of layers have to be fully opaque and have alpha channel value of 255 (`img[:, :, TRANSPARENCY] == 255`). Any image that contains 0 fully opaque pixel will be removed from the training set. Exception will be thrown if all images of a layer are empty.  
   
-Currently, these scripts require that the data have a specific folder structure. It is necessary to have a folder for images, another for the region masks, another for the background layer, and an additional folder for each layer different to the background. For example:
+Currently, the script requires that the data have a specific folder structure. It is necessary to have a folder for images, another for the region masks, another for the background layer, and an additional folder for each layer different to the background. For example:
 
   - **datasets** `Parent folder.`
     - **images** `Folder for images.`

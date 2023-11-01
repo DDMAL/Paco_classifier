@@ -1,5 +1,5 @@
 """Local Fast Trainer
-This is the file for running Calvo Fast Trainer loaclly. Make sure
+This is the file for running Fast Pixelwise Analysis of Music Document locally. Make sure
 to have an 'Images' folder with the correct inputs in the same directory.
 If not, you can change the values in 'inputs' and 'outputs'.
 
@@ -9,7 +9,7 @@ This will call `training_engine_sae.py`.
 It should generate 3 files in its current state. A background model,
 a Model 0, and a Log File.
 
-If you're running it in a Rodan container, this will be located in code/Rodan/rodan/jobs/Calvo_classifier
+If you're running it in a Rodan container, this will be located in code/Rodan/rodan/jobs/Paco_classifier
 If the container is already running, try `docker exec -it [container_name] bash` to run the script without
 stopping.
 """
