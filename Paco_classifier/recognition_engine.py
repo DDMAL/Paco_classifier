@@ -1,5 +1,6 @@
 from __future__ import division
 
+import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.backend import image_data_format
@@ -42,6 +43,11 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
     """
 
     num_labels = len(model_paths)
+    padding = 25
+
+    #Including padding at the edges due to the unreliability of the model's predictions along the borders.
+    image_with_padding = cv2.copyMakeBorder(image, padding, padding, padding, padding, cv2.BORDER_REPLICATE)
+    [img_height_pad, img_width_pad, channels_pad] = image_with_padding.shape
 
     sae_models = []
     for id_label in range(num_labels):
@@ -53,15 +59,20 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
         output_images = []
 
         for id_label in range(num_labels):
-            output_images.append(np.zeros((img_height, img_width)))
+            output_images.append(np.zeros((img_height_pad, img_width_pad)))
 
     elif mode == 'logical':
-        output_image = np.zeros((img_height, img_width), 'uint8')
+        output_image = np.zeros((img_height_pad+padding*2, img_width_pad+padding*2), 'uint8')
 
-    for row in range(0, img_height - w_height - 1, w_height):
-        print(str(row) + ' / ' + str(img_height))
-        for col in range(0, img_width - w_width - 1, w_width):
-            sample = image[row:row+w_height, col:col+w_width]
+    for row in range(0, img_height_pad, w_height-padding*2-1):
+        print(str(row) + ' / ' + str(img_height_pad))
+        for col in range(0, img_width, w_width-padding*2-1):
+
+            # Modifying the row and column indices to always cover the right and bottom borders of the image.
+            row = min(row, img_height_pad-w_height)
+            col = min(col, img_width_pad -w_width)
+
+            sample = image_with_padding[row:row+w_height, col:col+w_width]
 
             # Pre-process (check that training does the same!)
             sample = (255. - sample) / 255.
@@ -75,7 +86,7 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
 
                 for id_label in range(num_labels):
                     prediction = sae_models[id_label].predict(sample)
-                    output_images[id_label][row:row+w_height,col:col+w_width] = 100*prediction[0,:,:,0]
+                    output_images[id_label][row+padding:row+w_height-padding,col+padding:col+w_width-padding] = 100*prediction[0,padding:w_height-padding,padding:w_width-padding,0]
 
             elif mode == 'logical':
                 predictions = []
@@ -83,9 +94,12 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
                 for id_label in range(num_labels):
                     predictions.append( sae_models[id_label].predict(sample)[0,:,:,0]  )
 
-                output_image[row:row+w_height,col:col+w_width] = np.argmax( predictions, axis = 0 )
+                output_image[row+padding:row+w_height-padding,col+padding:col+w_width-padding] = np.argmax( predictions, axis = 0 )[padding:w_height-padding, padding:w_width-padding]
 
+    #Cutting the padding to obtain the same image resolution as the original image.
     if mode == 'masks':
-        return output_images
+        output_images_no_pad = [output_image[padding:w_height-padding, padding:w_height-padding] for output_image in output_images]
+        return output_images_no_pad
     elif mode == 'logical':
-        return output_image
+        return output_image[padding:padding+img_height, padding:padding+img_width]
+
