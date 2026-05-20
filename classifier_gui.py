@@ -6,11 +6,14 @@ from Paco_classifier import recognition_engine as recognition
 
 class ClassifierGUI(tk.Tk):
     def __init__(self):
-            self.build_inputs()
-            self.build_params()
-            self.build_run_button()
-            self.build_output_area()
-            self.poll_log_queue()
+        super().__init__()
+        self.title("Paco Classifier")
+        self._log_queue = queue.Queue()
+        self.build_inputs()
+        self.build_params()
+        self.build_run_button()
+        self.build_output_area()
+        self.poll_log_queue()
 
 
     # Building GUI layout 
@@ -34,12 +37,12 @@ class ClassifierGUI(tk.Tk):
           self.layer_frame.pack(anchor='w')
           self.layer_vars = []
           self.layer_rows = []
-          self._add_layer_row()
+          self.add_layer_row()
 
           btn_row = tk.Frame(frame)
           btn_row.pack(anchor='w', pady=(2, 0))
           tk.Button(btn_row, text="+ Add Layer",
-                    command=self._add_layer_row).pack(side='left')
+                    command=self.add_layer_row).pack(side='left')
         
     def make_browse_row(self, parent, label, var, cmd):
           row = tk.Frame(parent)
@@ -70,9 +73,10 @@ class ClassifierGUI(tk.Tk):
         
 
     def build_run_button(self):
-         self.run_btn = tk.Button(self, text="Run Classification",
-                                  command=self._on_run, font=('TkDefaultFont', 11, 'bold'))
-         
+        self.run_btn = tk.Button(self, text="Run Classification",
+                                 command=self.on_run, font=('TkDefaultFont', 11, 'bold'))
+        self.run_btn.pack(pady=8)
+
     def build_output_area(self):
          log_frame = tk.LabelFrame(self, text="progress", padx=8, pady=8)
          log_frame.pack(fill='x', padx=10, pady=5)
@@ -113,11 +117,11 @@ class ClassifierGUI(tk.Tk):
          self.log.delete('1.0', tk.END)
          self.log.config(state='disabled')
          self.clear_thumbnails()
-         threading.Thread(target=self.inference, daemon=True).start()
+         threading.Thread(target=self.run_inference, daemon=True).start()
 
     def run_inference(self):
         old_stdout = sys.stdout
-        sys.stdout = _StdoutRedirector(self.log_queue)
+        sys.stdout = _StdoutRedirector(self._log_queue)
         try:
             image = cv2.imread(self.image_var.get(), 1)
             if image is None:
@@ -131,7 +135,7 @@ class ClassifierGUI(tk.Tk):
             analyses = recognition.process_image_msae(image, model_paths, height, width, mode='logical')
             output_paths = []
             for id_label, _ in enumerate(model_paths):
-                   label_range = np.array(id_label, dtype=np.unit8)
+                   label_range = np.array(id_label, dtype=np.uint8)
                    mask = cv2.inRange(analyses, label_range, label_range)
                    masked = cv2.bitwise_and(image, image, mask=mask)
                    masked[mask == 0] = (255, 255, 255)
@@ -151,7 +155,7 @@ class ClassifierGUI(tk.Tk):
     def poll_log_queue(self):
         while True:
             try:
-                msg = self.log_queue.get_nowait()
+                msg = self._log_queue.get_nowait()
             except queue.Empty:
                 break
             self.log.config(state='normal')
@@ -190,8 +194,8 @@ class _StdoutRedirector:
         pass
 
 
-        
-                
-              
-         
 
+
+if __name__ == '__main__':
+    app = ClassifierGUI()
+    app.mainloop()
