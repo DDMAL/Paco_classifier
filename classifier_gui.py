@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, filedialog, scrolledtext
+from tkinter import ttk, filedialog, scrolledtext, messagebox
 import threading, queue, os, sys
 import cv2, numpy as np
 from Paco_classifier import recognition_engine as recognition
@@ -117,9 +117,38 @@ class ClassifierGUI(tk.Tk):
          self.log.delete('1.0', tk.END)
          self.log.config(state='disabled')
          self.clear_thumbnails()
-         threading.Thread(target=self.run_inference, daemon=True).start()
+         output_dir = self.outdir_var.get() or os.path.dirname(os.path.abspath(self.image_var.get()))
+         os.makedirs(output_dir, exist_ok=True)
+         model_paths = [self.bg_model_var.get()] + [v.get() for v in self.layer_vars if v.get()]
+         resolved_paths = self._resolve_output_paths(output_dir, model_paths)
+         threading.Thread(target=self.run_inference, args=(model_paths, resolved_paths), daemon=True).start()
 
-    def run_inference(self):
+    def _find_safe_path(self, output_dir, fname):
+        base, ext = os.path.splitext(fname)
+        counter = 1
+        while True:
+            candidate = os.path.join(output_dir, f'{base} ({counter}){ext}')
+            if not os.path.exists(candidate):
+                return candidate
+            counter += 1
+
+    def _resolve_output_paths(self, output_dir, model_paths):
+        image_base = os.path.splitext(os.path.basename(self.image_var.get()))[0]
+        resolved = []
+        for id_label, _ in enumerate(model_paths):
+            fname = f'background_layer_{image_base}.png' if id_label == 0 else f'layer_{id_label}_{image_base}.png'
+            path = os.path.join(output_dir, fname)
+            if os.path.exists(path):
+                overwrite = messagebox.askyesno(
+                    "File exists",
+                    f"{fname} already exists.\nOverwrite it?"
+                )
+                if not overwrite:
+                    path = self._find_safe_path(output_dir, fname)
+            resolved.append(path)
+        return resolved
+
+    def run_inference(self, model_paths, resolved_paths):
         old_stdout = sys.stdout
         sys.stdout = _StdoutRedirector(self._log_queue)
         try:
@@ -127,9 +156,6 @@ class ClassifierGUI(tk.Tk):
             if image is None:
                 print(f"Error: cannot read {self.image_var.get()!r}")
                 return
-            output_dir = self.outdir_var.get() or os.path.dirname(os.path.abspath(self.image_var.get()))
-            os.makedirs(output_dir, exist_ok=True)
-            model_paths = [self.bg_model_var.get()] + [v.get() for v in self.layer_vars if v.get()]
             height = int(self.height_var.get())
             width = int(self.width_var.get())
             analyses = recognition.process_image_msae(image, model_paths, height, width, mode='logical')
@@ -143,10 +169,8 @@ class ClassifierGUI(tk.Tk):
                    alpha[mask == 0] = 0
                    b, g, r = cv2.split(masked)
                    rgba = cv2.merge((b, g, r, alpha))
-                   fname = 'background_layer.png' if id_label == 0 else f'layer_{id_label}.png'
-                   path = os.path.join(output_dir, fname)
-                   cv2.imwrite(path, rgba)
-                   output_paths.append(path)
+                   cv2.imwrite(resolved_paths[id_label], rgba)
+                   output_paths.append(resolved_paths[id_label])
             self.after(0, self.show_results, output_paths)
         finally:
             sys.stdout = old_stdout
