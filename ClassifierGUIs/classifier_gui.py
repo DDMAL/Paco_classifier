@@ -117,6 +117,10 @@ class ClassifierGUI(tk.Tk):
          self.log.delete('1.0', tk.END)
          self.log.config(state='disabled')
          self.clear_thumbnails()
+         if not self.bg_model_var.get():
+             messagebox.showerror("Missing input", "A background model is required.")
+             self.run_btn.config(state='normal')
+             return
          output_dir = self.outdir_var.get() or os.path.dirname(os.path.abspath(self.image_var.get()))
          os.makedirs(output_dir, exist_ok=True)
          model_paths = [self.bg_model_var.get()] + [v.get() for v in self.layer_vars if v.get()]
@@ -136,7 +140,12 @@ class ClassifierGUI(tk.Tk):
         image_base = os.path.splitext(os.path.basename(self.image_var.get()))[0]
         resolved = []
         for id_label, _ in enumerate(model_paths):
-            fname = f'background_layer_{image_base}.png' if id_label == 0 else f'layer_{id_label}_{image_base}.png'
+            if id_label == 0:
+                fname = f'background_{image_base}.png'
+            elif id_label == 1:
+                fname = f'stafflines_{image_base}.png'
+            else:
+                fname = f'layer_{id_label}_{image_base}.png'
             path = os.path.join(output_dir, fname)
             if os.path.exists(path):
                 overwrite = messagebox.askyesno(

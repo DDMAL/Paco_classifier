@@ -24,6 +24,7 @@ def main():
 
     analyses = recognition.process_image_msae(image, model_paths, args.height, args.width, mode='logical')
 
+    image_base = os.path.splitext(os.path.basename(args.image))[0]
     for id_label, _ in enumerate(model_paths):
         label_range = np.array(id_label, dtype=np.uint8)
         mask = cv2.inRange(analyses, label_range, label_range)
@@ -36,7 +37,12 @@ def main():
         b_channel, g_channel, r_channel = cv2.split(original_masked)
         original_masked_alpha = cv2.merge((b_channel, g_channel, r_channel, alpha_channel))
 
-        filename = 'background_layer.png' if id_label == 0 else f'layer_{id_label}.png'
+        if id_label == 0:
+            filename = f'background_{image_base}.png'
+        elif id_label == 1:
+            filename = f'stafflines_{image_base}.png'
+        else:
+            filename = f'layer_{id_label}_{image_base}.png'
         output_path = os.path.join(output_dir, filename)
         cv2.imwrite(output_path, original_masked_alpha)
         print(f"Wrote {output_path}")
