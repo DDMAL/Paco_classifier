@@ -170,7 +170,10 @@ class BatchClassifierGUI(tk.Tk):
             for combo_idx, (bg_path, layer_path) in enumerate(combos):
                 bg_stem = os.path.splitext(os.path.basename(bg_path))[0]
                 layer_stem = os.path.splitext(os.path.basename(layer_path))[0]
-                combo_dir = os.path.join(output_dir, f"{bg_stem}__{layer_stem}")
+                if total_combos == 1:
+                    combo_dir = output_dir
+                else:
+                    combo_dir = os.path.join(output_dir, f"{bg_stem}__{layer_stem}")
                 os.makedirs(combo_dir, exist_ok=True)
                 model_paths = [bg_path, layer_path]
 
