@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 .DS_Store
 
-# Resources for testing
-Resources/
+# Reference/original Calvos classifier data
+Calvo_classifier_ref/
 
 .gitignore
