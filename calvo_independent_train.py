@@ -69,13 +69,14 @@ def main():
             masks = [load_alpha_mask(args.background_mask[idx])] + [
                 load_alpha_mask(group[idx]) for group in layer_mask_groups
             ]
+            _GB = 1024 ** 3
             mask_sizes = {}
             for i, mask in enumerate(masks):
                 if regions_mask is not None:
                     mask = np.logical_and(mask, regions_mask)
                 np.save(f"{tmpdir}/{image_stem}_label_{i}.npy", mask)
-                mask_sizes[i] = mask.nbytes
-            sizes[idx] = (img.nbytes, mask_sizes)
+                mask_sizes[i] = mask.nbytes / _GB
+            sizes[idx] = (img.nbytes / _GB, mask_sizes)
 
         # build DataContainer
         # layer_name must be a string key: "0" for bg, "1", "2", etc. for layers
