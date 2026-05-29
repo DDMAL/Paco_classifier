@@ -1,5 +1,6 @@
 """Fast Trainer Library
 This file provides the code for model generation.
+Reference for train.py
 Intended to be used standalone, without Rodan. For Rodan usage, see `Calvo_classifier_ref/fast_trainer_lib.py`.
 """
 

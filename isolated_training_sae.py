@@ -5,16 +5,14 @@ This is taken from the Paco's classifier version of training_engine_sae.py.
 
 from __future__ import division
 
-import os	
-import logging	
+import os
 
 from tensorflow.keras.models import Model, load_model
-from tensorflow.keras.layers import Dropout, UpSampling2D, Concatenate	
+from tensorflow.keras.layers import UpSampling2D, Concatenate	
 from tensorflow.keras.layers import Conv2D, MaxPooling2D, Input, Masking	
 from tensorflow.keras.optimizers import Adam	
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint	
 from tensorflow.keras.backend import image_data_format	
-import tensorflow as tf
 
 from Paco_classifier.data_loader import FileSelectionMode, SampleExtractionMode, getTrain
 
@@ -28,6 +26,7 @@ def get_sae(height, width, pretrained_weights=None):
         img_shape = (channels, height, width)
 
     inputs = Input(shape=img_shape)
+    # no-op for CNNs; kept for potential future use
     mask = Masking(mask_value=kPIXEL_VALUE_FOR_MASKING)(inputs)
 
     conv1 = Conv2D(
@@ -138,13 +137,12 @@ def train_msae(
         # Pretrained weights
         model_name = "Background Model" if label == 0 else "Model {}".format(label)
         if models and model_name in models:
-            model = load_model(models[model_name][0]['resource_path'])
+            model = load_model(models[model_name])
         else:
             model = get_sae(height=height, width=width)
-        new_output_path = os.path.join(output_path[str(label)])
         callbacks_list = [
             ModelCheckpoint(
-                new_output_path,
+                output_path[str(label)],
                 save_best_only=True,
                 monitor="val_accuracy",
                 verbose=1,
@@ -166,6 +164,5 @@ def train_msae(
             epochs=epochs
         )
         
-        os.rename(new_output_path, output_path[str(label)])
 
     return 0
