@@ -12,6 +12,7 @@ class TrainingGUI(tk.Tk):
         super().__init__()
         self.title("Calvo Independent Training")
         self.resizable(True, True)
+        self.geometry("740x700")
 
         self._image_rows = []
         self._bg_rows = []
@@ -20,6 +21,7 @@ class TrainingGUI(tk.Tk):
 
         self._log_queue = queue.Queue()
 
+        self._build_scroll_canvas()
         self._build_images()
         self._build_bg_masks()
         self._build_layer_masks()
@@ -37,6 +39,38 @@ class TrainingGUI(tk.Tk):
 
     # build
 
+    def _build_scroll_canvas(self):
+        container = tk.Frame(self)
+        container.pack(fill='both', expand=True)
+
+        canvas = tk.Canvas(container, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(container, orient='vertical', command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        scrollbar.pack(side='right', fill='y')
+        canvas.pack(side='left', fill='both', expand=True)
+
+        self._scroll_frame = tk.Frame(canvas)
+        window_id = canvas.create_window((0, 0), window=self._scroll_frame, anchor='nw')
+
+        def _on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox('all'))
+
+        def _on_canvas_configure(event):
+            canvas.itemconfig(window_id, width=event.width)
+
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
+
+        def _on_mousewheel_linux(event):
+            canvas.yview_scroll(-1 if event.num == 4 else 1, 'units')
+
+        self._scroll_frame.bind('<Configure>', _on_frame_configure)
+        canvas.bind('<Configure>', _on_canvas_configure)
+        canvas.bind('<MouseWheel>', _on_mousewheel)
+        canvas.bind('<Button-4>', _on_mousewheel_linux)
+        canvas.bind('<Button-5>', _on_mousewheel_linux)
+
     def _build_images(self):
         self._images_frame = self._section("Input Images")
         tk.Button(self._images_frame, text="+ Add Image",
@@ -44,7 +78,7 @@ class TrainingGUI(tk.Tk):
                   ).pack(anchor='w', pady=(4, 0))
     
     def _build_bg_masks(self):
-        self._bg_frame = self._section("Backgroun Masks (one per image, RGBA PNG)")
+        self._bg_frame = self._section("Background Masks (one per image, RGBA PNG)")
         tk.Button(self._bg_frame, text="+ Add BG Mask",
                   command=lambda: self._add_row(self._bg_rows, self._bg_frame, "BG Mask")
                   ).pack(anchor='w', pady=(4, 0))
@@ -79,7 +113,7 @@ class TrainingGUI(tk.Tk):
         self._make_browse_row(frame, "Output dir:", self._outdir_var, filedialog.askdirectory)
 
     def _build_run(self):
-        self._run_btn = tk.Button(self, text="Run Training",
+        self._run_btn = tk.Button(self._scroll_frame, text="Run Training",
                                   font=('TkDefaultFont', 11, 'bold'),
                                   command=self._on_run)
         self._run_btn.pack(pady=8)
@@ -94,7 +128,7 @@ class TrainingGUI(tk.Tk):
     
     # helpers
     def _section(self, title):
-        f = tk.LabelFrame(self, text=title, padx=8, pady=8)
+        f = tk.LabelFrame(self._scroll_frame, text=title, padx=8, pady=8)
         f.pack(fill='x', padx=10, pady=4)
         return f
     
