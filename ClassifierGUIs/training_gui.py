@@ -211,7 +211,7 @@ class TrainingGUI(tk.Tk):
     def _run_training(self, images, bg, layers, regions, outdir):
         script = str(Path(__file__).parent.parent / "calvo_independent_train.py")
         cmd = [
-            sys.executable, script,
+            sys.executable, "-u", script,
             "--images", *images,
             "--background-mask", *bg,
             "--layer-masks", *layers,
@@ -224,8 +224,9 @@ class TrainingGUI(tk.Tk):
             "--ram-limit", self._ram_var.get(),
         ]
         if regions:
-            cmd == ["--regions-mask", *regions]
+            cmd += ["--regions-mask", *regions]
 
+        status = "Training complete"
         try:
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             for line in iter(proc.stdout.readline, ''):

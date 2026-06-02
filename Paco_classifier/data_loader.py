@@ -67,6 +67,7 @@ class Data():
         self.size = size
         self.img = None
         self.count = count # Only for Y
+        self.coords = None  # cached np.where result for patch sampling
 
     def loadImg(self):
         self.img = np.load(self.path)
@@ -74,6 +75,7 @@ class Data():
     def delImg(self):
         del self.img
         self.img = None
+        self.coords = None
 
     def hasImg(self):
         return isinstance(self.img, np.ndarray)
@@ -258,26 +260,19 @@ def appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_c
     gr_chunks[index] = gr_sample
     gt_chunks[index] = gt_sample
 
-def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks):
-    potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
+def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks, potential_training_examples=None):
+    if potential_training_examples is None:
+        potential_training_examples = np.where(gt[:-patch_height, :-patch_width] == 1)
 
     num_coords = len(potential_training_examples[0])
 
     if num_coords >= batch_size:
-
-        index_coords_selected = [
-            np.random.randint(0, num_coords) for _ in range(batch_size)
-        ]
+        index_coords_selected = np.random.choice(num_coords, size=batch_size, replace=True)
         x_coords = potential_training_examples[0][index_coords_selected]
         y_coords = potential_training_examples[1][index_coords_selected]
     else:
-        x_coords = [
-            np.random.randint(0, gr.shape[0] + 1 - patch_height) for _ in range(batch_size)
-        ]
-
-        y_coords = [
-            np.random.randint(0, gr.shape[1] + 1 - patch_width) for _ in range(batch_size)
-        ]
+        x_coords = np.random.randint(0, gr.shape[0] + 1 - patch_height, size=batch_size)
+        y_coords = np.random.randint(0, gr.shape[1] + 1 - patch_width, size=batch_size)
 
     for i in range(batch_size):
         row = x_coords[i]
@@ -286,16 +281,19 @@ def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_
 
 
 def extractRandomSamples(inputs, idx_file, idx_label, patch_height, patch_width, batch_size, sample_extraction_mode):
-    gt = inputs.meta[idx_label]["working"][idx_file].img
-    gr_name = inputs.meta[idx_label]["working"][idx_file].x_name
-    gr = inputs.meta["Image"][gr_name].img
+    data_obj = inputs.meta[idx_label]["working"][idx_file]
+    gt = data_obj.img
+    gr = inputs.meta["Image"][data_obj.x_name].img
+
+    if data_obj.coords is None:
+        data_obj.coords = np.where(gt[:-patch_height, :-patch_width] == 1)
 
     gr_chunks = np.zeros(shape=(batch_size, patch_width, patch_height, 3))
     gt_chunks = np.zeros(shape=(batch_size, patch_width, patch_height))
 
-    extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks)
+    extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks, data_obj.coords)
 
-    return gr_chunks, gt_chunks  # convert into npy before yielding
+    return gr_chunks, gt_chunks
 
 
 def get_stride(patch_height, patch_width):

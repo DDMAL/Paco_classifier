@@ -6,6 +6,11 @@ This is taken from the Paco's classifier version of training_engine_sae.py.
 from __future__ import division
 
 import os
+import tensorflow as tf
+
+num_cores = os.cpu_count()
+tf.config.threading.set_intra_op_parallelism_threads(num_cores)
+tf.config.threading.set_inter_op_parallelism_threads(num_cores)
 
 from tensorflow.keras.models import Model, load_model
 from tensorflow.keras.layers import UpSampling2D, Concatenate	
@@ -156,7 +161,7 @@ def train_msae(
         # Training stage
         model.fit(
             generators[label],
-            verbose=2,
+            verbose=1,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
             validation_steps=len(inputs.meta["Image"]),
