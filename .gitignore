@@ -133,5 +133,6 @@ dmypy.json
 Calvo_classifier_ref/
 inputtest/
 models/
+models_v2/
 
 .gitignore

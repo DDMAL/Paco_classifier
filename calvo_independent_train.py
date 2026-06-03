@@ -13,7 +13,7 @@ from Paco_classifier.data_loader import DataContainer, Data, FileSelectionMode, 
 def load_alpha_mask(path):
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if img is None:
-        raise FileNotFoundError(f"Could not load image: {path}")
+        raise FileNotFoundError(f"Could not load image: {path} (resolved: {Path(path).resolve()})")
     return img[:, :, 3] == 255
 
 def parse_args():
@@ -29,6 +29,8 @@ def parse_args():
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--ram-limit", type=float, required=True, help="in GB, passed to DataContainer")
     parser.add_argument("--regions-mask", nargs="+", default=None, help="One selected-regions RGBA PNG per image")
+    parser.add_argument("--pretrained-models", nargs="+", default=None,
+                        help="Paths to existing .h5 models to fine-tune, one per label (background first, then layers in order)")
     return parser.parse_args()
 
 
@@ -42,15 +44,19 @@ def main():
     assert len(args.layer_masks) % n == 0, f"--layer-masks count must be a multiple of {n}"
     if args.regions_mask:
         assert len(args.regions_mask) == n, f"--regions-mask must have {n} entries"
-    if args.height != 256 or args.width != 256:
-        print(f"Warning: height={args.height} width={args.width} - models are typically trained at 256x256.", file=sys.stderr)
-    
+
     # Chunk flat layer-mask list into L groups of N (all pages of layer 1, then layer 2, etc.)
     layer_mask_groups = [
-        args.layer_masks[i*n:(i+1)*n] 
+        args.layer_masks[i*n:(i+1)*n]
         for i in range(len(args.layer_masks)//n)
     ]
     num_labels = 1 + len(layer_mask_groups) # background + N layers
+
+    if args.pretrained_models and len(args.pretrained_models) != num_labels:
+        print(f"Error: --pretrained-models must have {num_labels} entries (background + {num_labels - 1} layer(s)), got {len(args.pretrained_models)}.", file=sys.stderr)
+        sys.exit(1)
+    if args.height != 256 or args.width != 256:
+        print(f"Warning: height={args.height} width={args.width} - models are typically trained at 256x256.", file=sys.stderr)
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
@@ -96,6 +102,12 @@ def main():
             str(i): str(Path(args.output_dir) / f"model_{i}.h5")
             for i in range (num_labels)
         }
+        pretrained = None
+        if args.pretrained_models:
+            pretrained = {}
+            for i, path in enumerate(args.pretrained_models):
+                key = "Background Model" if i == 0 else f"Model {i}"
+                pretrained[key] = path
         training.train_msae(
             inputs=container,
             num_labels = num_labels,
@@ -107,6 +119,7 @@ def main():
             epochs=args.epochs,
             number_samples_per_class=args.max_samples_per_class,
             batch_size=args.batch_size,
+            models=pretrained,
         )
 
         for path in output_path.values():
