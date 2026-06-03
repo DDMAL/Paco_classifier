@@ -102,12 +102,20 @@ def main():
             str(i): str(Path(args.output_dir) / f"model_{i}.h5")
             for i in range (num_labels)
         }
-        pretrained = None
+        pretrained = {}
         if args.pretrained_models:
-            pretrained = {}
             for i, path in enumerate(args.pretrained_models):
                 key = "Background Model" if i == 0 else f"Model {i}"
                 pretrained[key] = path
+        else:
+            for i in range(num_labels):
+                key = "Background Model" if i == 0 else f"Model {i}"
+                candidate = Path(args.output_dir) / f"model_{i}.h5"
+                if candidate.exists():
+                    print(f"Found existing model for label {i}, fine-tuning: {candidate}")
+                    pretrained[key] = str(candidate)
+        if not pretrained:
+            pretrained = None
         training.train_msae(
             inputs=container,
             num_labels = num_labels,
