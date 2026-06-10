@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Independent Annotator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  background: #111;
+  color: #ddd;
+}
+
+/* ── canvas panel ─────────────────────────────────────────── */
+#canvas-panel {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  background: #111;
+  cursor: crosshair;
+}
+
+#canvas-container {
+  /* size driven by JS */
+  position: relative;
+  display: inline-block;
+}
+
+#main-canvas {
+  display: block;
+}
+
+/* ── dashboard ────────────────────────────────────────────── */
+#dashboard {
+  width: 256px;
+  min-width: 256px;
+  background: #1e1e1e;
+  border-left: 1px solid #333;
+  overflow-y: auto;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+}
+
+/* ── sections ─────────────────────────────────────────────── */
+.sec {
+  background: #272727;
+  border: 1px solid #353535;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.sec-title {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #666;
+  font-weight: 700;
+  margin-bottom: 7px;
+}
+
+/* ── buttons ──────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #333;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.btn:hover  { background: #3e3e3e; border-color: #555; color: #eee; }
+.btn.active { background: #2a5fa8; border-color: #4a90d9; color: #fff; }
+.btn.green  { border-color: #2d7a4a; background: #1a3a28; color: #5dcc8a; }
+.btn.green:hover  { background: #27ae60; border-color: #27ae60; color: #fff; }
+.btn.red    { border-color: #7a2d2d; background: #3a1a1a; color: #cc5d5d; }
+.btn.red:hover    { background: #c0392b; border-color: #c0392b; color: #fff; }
+.btn:disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+.btn.full { width: 100%; }
+
+.btn-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+/* ── sliders / form rows ──────────────────────────────────── */
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+}
+.form-lbl {
+  font-size: 11px;
+  color: #888;
+  width: 52px;
+  flex-shrink: 0;
+}
+.form-val {
+  font-size: 11px;
+  color: #aaa;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+input[type=range] {
+  flex: 1;
+  height: 3px;
+  accent-color: #4a90d9;
+  cursor: pointer;
+}
+input[type=color] {
+  width: 30px;
+  height: 22px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 1px;
+  background: #333;
+}
+
+/* ── mode badge ───────────────────────────────────────────── */
+#mode-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 5px;
+}
+.mb-idle      { background: #3a3a3a; color: #777; }
+.mb-selecting { background: #4a2d7a; color: #c9a0f5; }
+.mb-annotating{ background: #1a4a2a; color: #5dcc8a; }
+
+#status-text {
+  font-size: 11px;
+  color: #777;
+  line-height: 1.55;
+}
+
+/* ── annotation list ──────────────────────────────────────── */
+.ann-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 7px;
+  background: #2e2e2e;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  margin-top: 4px;
+  font-size: 11px;
+}
+.ann-item-lbl { color: #bbb; }
+.ann-del { cursor: pointer; color: #884444; font-size: 16px; line-height: 1; padding: 0 2px; }
+.ann-del:hover { color: #e74c3c; }
+
+.zoom-pct { font-size: 11px; color: #777; text-align: center; margin-top: 4px; }
+
+/* ── kbd hints ────────────────────────────────────────────── */
+.kbd { display: inline-block; background: #333; border: 1px solid #555; border-radius: 3px;
+       padding: 0 4px; font-size: 10px; color: #999; }
+
+/* ── scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1a1a1a; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════ CANVAS PANEL ════════════════════════ -->
+<div id="canvas-panel">
+  <div id="canvas-container">
+    <canvas id="main-canvas"></canvas>
+  </div>
+</div>
+
+<!-- ════════════════════ DASHBOARD ═══════════════════════════ -->
+<div id="dashboard">
+
+  <!-- Image -->
+  <div class="sec">
+    <div class="sec-title">Image</div>
+    <input type="file" id="file-input" accept="image/*" style="display:none">
+    <button class="btn full" onclick="document.getElementById('file-input').click()">Open Image…</button>
+    <div id="image-name" style="margin-top:5px;font-size:11px;color:#777;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">No image loaded</div>
+  </div>
+
+  <!-- Mode / status -->
+  <div class="sec">
+    <div class="sec-title">Status</div>
+    <div id="mode-badge" class="mb-idle">Idle</div>
+    <div id="status-text">Open an image to begin.</div>
+  </div>
+
+  <!-- Selection controls -->
+  <div class="sec" id="sec-select" style="display:none">
+    <div class="sec-title">Region Selection</div>
+    <div id="bbox-info" style="font-size:11px;color:#888;margin-bottom:6px;">
+      Click and drag to select a region
+    </div>
+    <button class="btn full green" id="btn-confirm" onclick="confirmSelection()" disabled>
+      Annotate Region →
+    </button>
+    <button class="btn full" style="margin-top:4px" onclick="clearSelection()">Clear</button>
+  </div>
+
+  <!-- Drawing tools (annotation mode) -->
+  <div class="sec" id="sec-draw" style="display:none">
+    <div class="sec-title">Drawing Tool
+      <span style="float:right;font-size:10px;color:#555">
+        <span class="kbd">F</span> <span class="kbd">L</span> <span class="kbd">B</span>
+      </span>
+    </div>
+    <div class="btn-row">
+      <button class="btn active" id="btn-freehand" onclick="setDrawMode('freehand')">Freehand</button>
+      <button class="btn" id="btn-line" onclick="setDrawMode('line')">Line</button>
+      <button class="btn" id="btn-box" onclick="setDrawMode('box')">Box</button>
+      <button class="btn" id="btn-erase" onclick="setDrawMode('erase')" style="border-color:#7a4a2d;color:#cc8855">Erase</button>
+    </div>
+    <div style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+      <button class="btn" id="btn-fill" onclick="toggleFill()">Hollow</button>
+      <span style="font-size:10px;color:#555">box mode fill</span>
+    </div>
+    <div style="margin-top:7px;font-size:10px;color:#555">
+      Left-click = paint &nbsp;|&nbsp; Right-click = erase (any mode)
+    </div>
+  </div>
+
+  <!-- Brush size -->
+  <div class="sec" id="sec-brush" style="display:none">
+    <div class="sec-title">Brush / Line Size
+      <span style="float:right;font-size:10px;color:#555">
+        <span class="kbd">[</span> <span class="kbd">]</span>
+      </span>
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Size</span>
+      <input type="range" id="brush-slider" min="1" max="80" value="5"
+             oninput="setBrushSize(+this.value)">
+      <span class="form-val" id="brush-val">5px</span>
+    </div>
+  </div>
+
+  <!-- Overlay appearance -->
+  <div class="sec" id="sec-overlay" style="display:none">
+    <div class="sec-title">Mask Overlay</div>
+    <div class="form-row">
+      <span class="form-lbl">Opacity</span>
+      <input type="range" id="opacity-slider" min="0" max="100" value="60"
+             oninput="setOpacity(+this.value)">
+      <span class="form-val" id="opacity-val">60%</span>
+    </div>
+    <div class="form-row">
+      <span class="form-lbl">Color</span>
+      <input type="color" id="mask-color" value="#ff4444"
+             oninput="setMaskColor(this.value)">
+    </div>
+  </div>
+
+  <!-- Zoom -->
+  <div class="sec" id="sec-zoom" style="display:none">
+    <div class="sec-title">Zoom
+      <span style="float:right;font-size:10px;color:#555"><span class="kbd">+</span> <span class="kbd">−</span> keys</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="stepZoom(-0.25)">−</button>
+      <button class="btn" onclick="stepZoom(+0.25)">+</button>
+      <button class="btn" onclick="fitZoom()">Fit</button>
+    </div>
+    <div class="zoom-pct" id="zoom-pct">100%</div>
+  </div>
+
+  <!-- Actions -->
+  <div class="sec" id="sec-actions" style="display:none">
+    <div class="sec-title">Actions</div>
+    <div class="form-row" style="margin-bottom:6px">
+        <span class="form-lbl">Class</span>
+        <select id="class-select"
+                style="flex:1; background:#2a2a2a; color:#ccc; border:1px solid #444;
+                border-radius:3px; padding:3px 5px; font-size:12px; cursor:pointer;">
+        </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="undo()" id="btn-undo">↩ Undo
+        <span style="font-size:10px;color:#555">&nbsp;Ctrl+Z</span>
+      </button>
+      <button class="btn green" onclick="saveAnnotation()">✓ Save
+        <span style="font-size:10px;color:#5dcc8a">&nbsp;S</span>
+      </button>
+    </div>
+    <button class="btn red full" style="margin-top:5px" onclick="cancelAnnotation()">
+      ✕ Cancel &nbsp;<span style="font-size:10px;color:#cc5d5d">Esc</span>
+    </button>
+  </div>
+
+  <!-- Saved annotations -->
+  <div class="sec">
+    <div class="sec-title">Saved Annotations (<span id="ann-count">0</span>)</div>
+    <div id="ann-list"></div>
+    <button class="btn full" id="btn-export" onclick="showExportInfo()" disabled style="margin-top:6px">
+      Show Export Paths
+    </button>
+  </div>
+
+  <!-- Keyboard reference -->
+  <div class="sec" id="sec-keys" style="display:none">
+    <div class="sec-title">Keyboard</div>
+    <div style="font-size:10px;color:#666;line-height:1.9">
+      <span class="kbd">F</span> Freehand &nbsp;
+      <span class="kbd">L</span> Line &nbsp;
+      <span class="kbd">B</span> Box &nbsp;
+      <span class="kbd">E</span> Erase<br>
+      <span class="kbd">[</span> <span class="kbd">]</span> Brush size<br>
+      <span class="kbd">+</span> <span class="kbd">−</span> Zoom in/out<br>
+      <span class="kbd">Scroll</span> Pan<br>
+      <span class="kbd">Middle-drag</span> Pan<br>
+      <span class="kbd">S</span> Save &nbsp;
+      <span class="kbd">Esc</span> Cancel<br>
+      <span class="kbd">Ctrl+Z</span> Undo<br>
+      <span class="kbd">Enter</span> Confirm selection
+    </div>
+  </div>
+
+</div><!-- end dashboard -->
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// State
+// ═══════════════════════════════════════════════════════════════
+const S = {
+  mode: 'idle',        // 'idle' | 'selecting' | 'annotating'
+
+  // Full image
+  imageName: '',
+  imageEl: null,
+  imgW: 0, imgH: 0,
+
+  // Selection-mode display transform
+  dispScale: 1,
+  dispOX: 0, dispOY: 0,
+
+  // Selection
+  selStart: null, selEnd: null,
+  bbox: null,           // {x,y,w,h} in original image coords
+
+  // Annotation-mode offscreen canvases (crop resolution)
+  cropCanvas:  null,
+  maskCanvas:  null,
+  cropW: 0, cropH: 0,
+
+  // Annotation viewport
+  zoom: 1, panX: 0, panY: 0,
+  isPanning: false, panLX: 0, panLY: 0,
+
+  // Drawing
+  drawMode: 'freehand',   // 'freehand' | 'line' | 'box'
+  boxFilled: false,
+  brushSize: 5,
+  opacity: 0.6,
+  maskColor: '#ff4444',
+
+  isDrawing: false,
+  erasing: false,
+  lastCX: 0, lastCY: 0,   // last crop-coord position (freehand)
+  strokeStart: null,       // crop-coord start for line/box
+  mouseCP: null,           // current crop-coord of mouse (for preview)
+
+  // Undo stack (array of ImageData from maskCanvas)
+  undoStack: [], maxUndo: 10,
+
+  // Saved annotations
+  annotations: [],
+};
+
+// Persistent helper canvas for tinting
+let _tintCanvas = null;
+
+const canvas = document.getElementById('main-canvas');
+const ctx    = canvas.getContext('2d');
+const panel  = document.getElementById('canvas-panel');
+
+
+// ═══════════════════════════════════════════════════════════════
+// UI helpers
+// ═══════════════════════════════════════════════════════════════
+function setMode(mode) {
+  S.mode = mode;
+  const badge = document.getElementById('mode-badge');
+  const map = {
+    idle:       ['mb-idle',       'Idle'],
+    selecting:  ['mb-selecting',  'Selecting'],
+    annotating: ['mb-annotating', 'Annotating'],
+  };
+  badge.className = map[mode][0];
+  badge.textContent = map[mode][1];
+
+  const show = (id, cond) => { document.getElementById(id).style.display = cond ? '' : 'none'; };
+  show('sec-select',  mode === 'selecting');
+  show('sec-draw',    mode === 'annotating');
+  show('sec-brush',   mode === 'annotating');
+  show('sec-overlay', mode === 'annotating');
+  show('sec-zoom',    mode === 'annotating');
+  show('sec-actions', mode === 'annotating');
+  show('sec-keys',    mode === 'annotating');
+}
+
+function setStatus(text) {
+  document.getElementById('status-text').textContent = text;
+}
+
+function refreshAnnList() {
+  document.getElementById('ann-count').textContent = S.annotations.length;
+  document.getElementById('btn-export').disabled = S.annotations.length === 0;
+
+  const list = document.getElementById('ann-list');
+  list.innerHTML = '';
+  S.annotations.forEach((a, i) => {
+    const d = document.createElement('div');
+    d.className = 'ann-item';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'ann-item-lbl';
+    lbl.textContent = `#${i+1} [${a.label || '?'}] [${a.bbox.x},${a.bbox.y}]  ${a.bbox.w}×${a.bbox.h}px`;
+
+    const del = document.createElement('span');
+    del.className = 'ann-del';
+    del.textContent = '×';
+    del.title = 'Delete annotation';
+    del.onclick = () => deleteAnnotation(a.id);
+
+    d.appendChild(lbl);
+    d.appendChild(del);
+    list.appendChild(d);
+  });
+}
+
+function showExportInfo() {
+  if (!S.annotations.length) return;
+  const last = S.annotations[S.annotations.length - 1];
+  const txt = last.files
+    ? Object.entries(last.files).map(([k,v]) => `${k}: ${v}`).join('\n')
+    : 'Saved to annotations/ folder next to the image.';
+  alert('Export paths (last annotation):\n\n' + txt);
+}
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+function hexToRgb(hex) {
+  return [
+    parseInt(hex.slice(1,3), 16),
+    parseInt(hex.slice(3,5), 16),
+    parseInt(hex.slice(5,7), 16),
+  ];
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// File loading
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('file-input').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  setStatus('Uploading…');
+  const fd = new FormData();
+  fd.append('image', file);
+  try {
+    const r = await fetch('/api/upload_image', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.error) { setStatus('Error: ' + d.error); return; }
+    applyLoadedImage(d);
+  } catch (err) { setStatus('Upload failed: ' + err.message); }
+  e.target.value = '';
+});
+
+async function loadImageByPath(path) {
+  setStatus('Loading…');
+  try {
+    const r = await fetch('/api/load_image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    const d = await r.json();
+    if (d.error) { setStatus('Error: ' + d.error); return; }
+    applyLoadedImage(d);
+  } catch (err) { setStatus('Load failed: ' + err.message); }
+}
+
+function applyLoadedImage(d) {
+  S.imageName = d.name;
+  S.imgW = d.width;
+  S.imgH = d.height;
+  S.annotations = d.annotations || [];
+  document.getElementById('image-name').textContent = d.name;
+  refreshAnnList();
+
+  const img = new Image();
+  img.onload = () => {
+    S.imageEl = img;
+    initSelectionMode();
+  };
+  img.src = d.image;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Selection mode
+// ═══════════════════════════════════════════════════════════════
+function initSelectionMode() {
+  setMode('selecting');
+  resizeCanvasToPanel();
+
+  const pw = panel.clientWidth;
+  const ph = panel.clientHeight;
+  S.dispScale = Math.min(pw / S.imgW, ph / S.imgH, 1.0);
+  S.dispOX = Math.floor((pw - S.imgW * S.dispScale) / 2);
+  S.dispOY = Math.floor((ph - S.imgH * S.dispScale) / 2);
+
+  S.selStart = S.selEnd = S.bbox = null;
+  S.isDrawing = false;
+
+  document.getElementById('btn-confirm').disabled = true;
+  document.getElementById('bbox-info').textContent = 'Click and drag to select a region';
+  setStatus('Drag a bounding box around a word/region, then click "Annotate Region". Right-click to clear selection.');
+  drawSelection();
+}
+
+function resizeCanvasToPanel() {
+  canvas.width  = panel.clientWidth;
+  canvas.height = panel.clientHeight;
+  document.getElementById('canvas-container').style.width  = panel.clientWidth  + 'px';
+  document.getElementById('canvas-container').style.height = panel.clientHeight + 'px';
+}
+
+function canvasToImg(cx, cy) {
+  return {
+    ix: (cx - S.dispOX) / S.dispScale,
+    iy: (cy - S.dispOY) / S.dispScale,
+  };
+}
+
+function updateBbox() {
+  if (!S.selStart || !S.selEnd) { S.bbox = null; return; }
+  const x = Math.round(Math.min(S.selStart.ix, S.selEnd.ix));
+  const y = Math.round(Math.min(S.selStart.iy, S.selEnd.iy));
+  const w = Math.round(Math.abs(S.selEnd.ix - S.selStart.ix));
+  const h = Math.round(Math.abs(S.selEnd.iy - S.selStart.iy));
+  const ok = w >= 5 && h >= 5;
+  S.bbox = ok ? { x, y, w, h } : null;
+  document.getElementById('btn-confirm').disabled = !ok;
+  document.getElementById('bbox-info').textContent = ok
+    ? `x:${x}  y:${y}  ${w}×${h} px`
+    : 'Region too small (min 5×5 px)';
+}
+
+function clearSelection() {
+  S.selStart = S.selEnd = S.bbox = null;
+  S.isDrawing = false;
+  document.getElementById('btn-confirm').disabled = true;
+  document.getElementById('bbox-info').textContent = 'Click and drag to select a region';
+  drawSelection();
+}
+
+function drawSelection() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!S.imageEl) return;
+
+  ctx.drawImage(S.imageEl,
+    0, 0, S.imgW, S.imgH,
+    S.dispOX, S.dispOY, S.imgW * S.dispScale, S.imgH * S.dispScale);
+
+  // existing annotation boxes (blue)
+  S.annotations.forEach((a, i) => {
+    const x = S.dispOX + a.bbox.x * S.dispScale;
+    const y = S.dispOY + a.bbox.y * S.dispScale;
+    const w = a.bbox.w * S.dispScale;
+    const h = a.bbox.h * S.dispScale;
+    ctx.strokeStyle = 'rgba(74,144,217,.7)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(74,144,217,.12)';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#4a90d9';
+    ctx.font = '10px system-ui';
+    ctx.fillText(`#${i+1}`, x + 2, y + 11);
+  });
+
+  // active selection (yellow dashed)
+  if (S.selStart && S.selEnd) {
+    const x1 = S.dispOX + Math.min(S.selStart.ix, S.selEnd.ix) * S.dispScale;
+    const y1 = S.dispOY + Math.min(S.selStart.iy, S.selEnd.iy) * S.dispScale;
+    const x2 = S.dispOX + Math.max(S.selStart.ix, S.selEnd.ix) * S.dispScale;
+    const y2 = S.dispOY + Math.max(S.selStart.iy, S.selEnd.iy) * S.dispScale;
+    ctx.strokeStyle = '#f0c040';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 3]);
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(240,192,64,.1)';
+    ctx.fillRect(x1, y1, x2 - x1, y2 - y1);
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Annotation mode – init
+// ═══════════════════════════════════════════════════════════════
+function confirmSelection() {
+  if (!S.bbox) return;
+  const { x, y, w, h } = S.bbox;
+  S.cropW = w; S.cropH = h;
+
+  // Crop canvas
+  S.cropCanvas = document.createElement('canvas');
+  S.cropCanvas.width = w; S.cropCanvas.height = h;
+  S.cropCanvas.getContext('2d').drawImage(S.imageEl, x, y, w, h, 0, 0, w, h);
+
+  // Mask canvas — transparent bg, white ink pixels (alpha channel encodes ink)
+  S.maskCanvas = document.createElement('canvas');
+  S.maskCanvas.width = w; S.maskCanvas.height = h;
+  // starts fully transparent (canvas default)
+
+  S.undoStack = [];
+
+  // Fit zoom
+  const pw = panel.clientWidth, ph = panel.clientHeight;
+  S.zoom = clamp(Math.min(pw / w, ph / h), 0.25, 8);
+  S.panX = (pw - w * S.zoom) / 2;
+  S.panY = (ph - h * S.zoom) / 2;
+
+  resizeCanvasToPanel();
+  setMode('annotating');
+  updateZoomDisplay();
+  setStatus('Paint ink pixels. Left-click = paint, right-click = erase. Scroll to pan. + / − keys to zoom. Middle-drag to pan.');
+  drawAnnotation();
+}
+
+function cancelAnnotation() {
+  S.cropCanvas = S.maskCanvas = null;
+  initSelectionMode();
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Annotation mode – rendering
+// ═══════════════════════════════════════════════════════════════
+
+/** Get (or create/resize) a persistent helper canvas for tinting. */
+function getTintCanvas(w, h) {
+  if (!_tintCanvas || _tintCanvas.width !== w || _tintCanvas.height !== h) {
+    _tintCanvas = document.createElement('canvas');
+    _tintCanvas.width = w; _tintCanvas.height = h;
+  }
+  return _tintCanvas;
+}
+
+/**
+ * Draw the mask canvas tinted with the chosen color.
+ * maskCanvas uses alpha=255 for ink, alpha=0 for background.
+ * We fill a solid-color rect and clip it via 'destination-in' to the mask's alpha.
+ */
+function drawTintedMask(opacity) {
+  const tc = getTintCanvas(S.cropW, S.cropH);
+  const tctx = tc.getContext('2d');
+  tctx.clearRect(0, 0, S.cropW, S.cropH);
+
+  // Step 1: draw color
+  tctx.globalCompositeOperation = 'source-over';
+  tctx.fillStyle = S.maskColor;
+  tctx.fillRect(0, 0, S.cropW, S.cropH);
+
+  // Step 2: clip to mask (keep color only where mask is opaque)
+  tctx.globalCompositeOperation = 'destination-in';
+  tctx.drawImage(S.maskCanvas, 0, 0);
+  tctx.globalCompositeOperation = 'source-over';
+
+  // Draw to main canvas
+  ctx.globalAlpha = opacity;
+  ctx.drawImage(tc, S.panX, S.panY, S.cropW * S.zoom, S.cropH * S.zoom);
+  ctx.globalAlpha = 1;
+}
+
+function drawAnnotation() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!S.cropCanvas) return;
+
+  ctx.imageSmoothingEnabled = S.zoom < 2;
+
+  // Image crop
+  ctx.drawImage(S.cropCanvas, S.panX, S.panY, S.cropW * S.zoom, S.cropH * S.zoom);
+
+  // Mask overlay
+  drawTintedMask(S.opacity);
+
+  // Preview stroke (line / box mode during drag)
+  if (S.isDrawing && S.strokeStart && S.mouseCP && S.drawMode !== 'freehand') {
+    const x1 = S.panX + S.strokeStart.x * S.zoom;
+    const y1 = S.panY + S.strokeStart.y * S.zoom;
+    const x2 = S.panX + S.mouseCP.x * S.zoom;
+    const y2 = S.panY + S.mouseCP.y * S.zoom;
+
+    ctx.save();
+    ctx.globalAlpha = S.erasing ? 0.4 : S.opacity * 0.85;
+    ctx.strokeStyle = S.erasing ? '#333' : S.maskColor;
+    ctx.fillStyle   = S.erasing ? '#333' : S.maskColor;
+    ctx.lineWidth   = S.brushSize * S.zoom;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([4, 3]);
+
+    if (S.drawMode === 'line') {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    } else if (S.drawMode === 'box') {
+      const bx = Math.min(x1, x2), by = Math.min(y1, y2);
+      const bw = Math.abs(x2 - x1), bh = Math.abs(y2 - y1);
+      if (S.boxFilled) ctx.fillRect(bx, by, bw, bh);
+      else ctx.strokeRect(bx, by, bw, bh);
+    }
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  // Crop border
+  ctx.strokeStyle = '#4a90d9';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(S.panX - 1, S.panY - 1, S.cropW * S.zoom + 2, S.cropH * S.zoom + 2);
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Mask drawing primitives (all in crop-pixel space)
+// ═══════════════════════════════════════════════════════════════
+function maskCtx() { return S.maskCanvas.getContext('2d'); }
+
+function maskPaint(mctx, erase) {
+  if (erase) mctx.globalCompositeOperation = 'destination-out';
+  else       mctx.globalCompositeOperation = 'source-over';
+  mctx.fillStyle = '#fff';
+  mctx.strokeStyle = '#fff';
+}
+
+function maskRestore(mctx) {
+  mctx.globalCompositeOperation = 'source-over';
+}
+
+function paintCircle(mctx, x, y, r, erase) {
+  maskPaint(mctx, erase);
+  mctx.beginPath();
+  mctx.arc(x, y, r, 0, Math.PI * 2);
+  mctx.fill();
+  maskRestore(mctx);
+}
+
+function paintLine(mctx, x1, y1, x2, y2, lw, erase) {
+  maskPaint(mctx, erase);
+  mctx.lineWidth = lw;
+  mctx.lineCap = 'round';
+  mctx.beginPath();
+  mctx.moveTo(x1, y1);
+  mctx.lineTo(x2, y2);
+  mctx.stroke();
+  maskRestore(mctx);
+}
+
+function paintBox(mctx, x1, y1, x2, y2, lw, filled, erase) {
+  const bx = Math.min(x1, x2), by = Math.min(y1, y2);
+  const bw = Math.abs(x2 - x1), bh = Math.abs(y2 - y1);
+  maskPaint(mctx, erase);
+  if (filled) mctx.fillRect(bx, by, bw, bh);
+  else {
+    mctx.lineWidth = lw;
+    mctx.strokeRect(bx, by, bw, bh);
+  }
+  maskRestore(mctx);
+}
+
+// ── undo ──────────────────────────────────────────────────────
+function pushUndo() {
+  const data = S.maskCanvas.getContext('2d').getImageData(0, 0, S.cropW, S.cropH);
+  S.undoStack.push(data);
+  if (S.undoStack.length > S.maxUndo) S.undoStack.shift();
+}
+
+function undo() {
+  if (!S.undoStack.length) return;
+  S.maskCanvas.getContext('2d').putImageData(S.undoStack.pop(), 0, 0);
+  drawAnnotation();
+}
+
+// ── canvas → crop coords ─────────────────────────────────────
+function toCrop(cx, cy) {
+  return { x: (cx - S.panX) / S.zoom, y: (cy - S.panY) / S.zoom };
+}
+
+function canvasRect(e) {
+  const r = canvas.getBoundingClientRect();
+  return { cx: e.clientX - r.left, cy: e.clientY - r.top };
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Mouse events
+// ═══════════════════════════════════════════════════════════════
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+canvas.addEventListener('mousedown', e => {
+  e.preventDefault();
+  const { cx, cy } = canvasRect(e);
+
+  // ── selection mode ──
+  if (S.mode === 'selecting') {
+    if (e.button === 2) { clearSelection(); return; }
+    if (e.button !== 0) return;
+    const { ix, iy } = canvasToImg(cx, cy);
+    if (ix < 0 || ix > S.imgW || iy < 0 || iy > S.imgH) return;
+    S.selStart = { ix: clamp(ix, 0, S.imgW), iy: clamp(iy, 0, S.imgH) };
+    S.selEnd = { ...S.selStart };
+    S.isDrawing = true;
+    return;
+  }
+
+  // ── annotation mode ──
+  if (S.mode === 'annotating') {
+    // Middle-button pan
+    if (e.button === 1) {
+      S.isPanning = true; S.panLX = cx; S.panLY = cy;
+      return;
+    }
+
+    S.erasing = (S.drawMode === 'erase') || (e.button === 2);
+    const cp = toCrop(cx, cy);
+
+    if (S.drawMode === 'freehand' || S.drawMode === 'erase') {
+      pushUndo();
+      S.isDrawing = true;
+      S.lastCX = cp.x; S.lastCY = cp.y;
+      paintCircle(maskCtx(), cp.x, cp.y, S.brushSize / 2, S.erasing);
+      drawAnnotation();
+
+    } else {
+      S.isDrawing = true;
+      S.strokeStart = { x: cp.x, y: cp.y };
+    }
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  const { cx, cy } = canvasRect(e);
+
+  // ── selection ──
+  if (S.mode === 'selecting' && S.isDrawing) {
+    const { ix, iy } = canvasToImg(cx, cy);
+    S.selEnd = { ix: clamp(ix, 0, S.imgW), iy: clamp(iy, 0, S.imgH) };
+    updateBbox();
+    drawSelection();
+    return;
+  }
+
+  // ── annotation ──
+  if (S.mode === 'annotating') {
+    if (S.isPanning) {
+      S.panX += cx - S.panLX; S.panY += cy - S.panLY;
+      S.panLX = cx; S.panLY = cy;
+      drawAnnotation(); return;
+    }
+    const cp = toCrop(cx, cy);
+    S.mouseCP = cp;
+
+    if (!S.isDrawing) return;
+
+    if (S.drawMode === 'freehand') {
+      const mctx = maskCtx();
+      paintLine(mctx, S.lastCX, S.lastCY, cp.x, cp.y, S.brushSize, S.erasing);
+      paintCircle(mctx, cp.x, cp.y, S.brushSize / 2, S.erasing);
+      S.lastCX = cp.x; S.lastCY = cp.y;
+      drawAnnotation();
+    } else {
+      // Just update preview
+      drawAnnotation();
+    }
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  const { cx, cy } = canvasRect(e);
+
+  if (S.mode === 'selecting') { S.isDrawing = false; return; }
+
+  if (S.mode === 'annotating') {
+    if (S.isPanning) { S.isPanning = false; return; }
+    if (!S.isDrawing) return;
+
+    const cp = toCrop(cx, cy);
+
+    if (S.drawMode === 'line' && S.strokeStart) {
+      pushUndo();
+      paintLine(maskCtx(), S.strokeStart.x, S.strokeStart.y, cp.x, cp.y, S.brushSize, S.erasing);
+    } else if (S.drawMode === 'box' && S.strokeStart) {
+      pushUndo();
+      paintBox(maskCtx(), S.strokeStart.x, S.strokeStart.y, cp.x, cp.y, S.brushSize, S.boxFilled, S.erasing);
+    }
+
+    S.isDrawing = false;
+    S.strokeStart = null;
+    drawAnnotation();
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  S.mouseCP = null;
+  if (S.mode === 'annotating' && S.drawMode === 'freehand') S.isDrawing = false;
+  S.isPanning = false;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (S.mode !== 'annotating') return;
+
+  // Scroll to pan; scale by line-height if deltaMode === 1 (line units)
+  const speed = e.deltaMode === 1 ? 28 : 1;
+  S.panX -= e.deltaX * speed;
+  S.panY -= e.deltaY * speed;
+  drawAnnotation();
+}, { passive: false });
+
+
+// ═══════════════════════════════════════════════════════════════
+// Controls
+// ═══════════════════════════════════════════════════════════════
+function setDrawMode(mode) {
+  S.drawMode = mode;
+  ['freehand','line','box','erase'].forEach(m =>
+    document.getElementById('btn-' + m).classList.toggle('active', m === mode));
+  S.isDrawing = false;
+  S.strokeStart = null;
+  drawAnnotation();
+}
+
+function toggleFill() {
+  S.boxFilled = !S.boxFilled;
+  document.getElementById('btn-fill').textContent = S.boxFilled ? 'Filled' : 'Hollow';
+}
+
+function setBrushSize(v) {
+  S.brushSize = v;
+  document.getElementById('brush-val').textContent = v + 'px';
+}
+
+function setOpacity(v) {
+  S.opacity = v / 100;
+  document.getElementById('opacity-val').textContent = v + '%';
+  if (S.mode === 'annotating') drawAnnotation();
+}
+
+function setMaskColor(hex) {
+  S.maskColor = hex;
+  if (S.mode === 'annotating') drawAnnotation();
+}
+
+function stepZoom(delta) {
+  const pw = panel.clientWidth, ph = panel.clientHeight;
+  const newZoom = clamp(S.zoom + delta, 0.1, 30);
+  const cropCX = (pw / 2 - S.panX) / S.zoom;
+  const cropCY = (ph / 2 - S.panY) / S.zoom;
+  S.zoom = newZoom;
+  S.panX = pw / 2 - cropCX * S.zoom;
+  S.panY = ph / 2 - cropCY * S.zoom;
+  updateZoomDisplay();
+  drawAnnotation();
+}
+
+function fitZoom() {
+  const pw = panel.clientWidth, ph = panel.clientHeight;
+  S.zoom = clamp(Math.min(pw / S.cropW, ph / S.cropH), 0.1, 8);
+  S.panX = (pw - S.cropW * S.zoom) / 2;
+  S.panY = (ph - S.cropH * S.zoom) / 2;
+  updateZoomDisplay();
+  drawAnnotation();
+}
+
+function updateZoomDisplay() {
+  document.getElementById('zoom-pct').textContent = Math.round(S.zoom * 100) + '%';
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Save / delete
+// ═══════════════════════════════════════════════════════════════
+async function saveAnnotation() {
+  if (!S.bbox || !S.maskCanvas) return;
+
+  // Convert alpha-channel mask → grayscale binary PNG
+  const mctx = S.maskCanvas.getContext('2d');
+  const raw  = mctx.getImageData(0, 0, S.cropW, S.cropH);
+
+  const bin  = document.createElement('canvas');
+  bin.width  = S.cropW; bin.height = S.cropH;
+  const bctx = bin.getContext('2d');
+  const bd   = bctx.createImageData(S.cropW, S.cropH);
+
+  for (let i = 0; i < raw.data.length; i += 4) {
+    const v = raw.data[i + 3] > 127 ? 255 : 0;  // alpha → binary
+    bd.data[i] = bd.data[i+1] = bd.data[i+2] = v;
+    bd.data[i+3] = 255;
+  }
+  bctx.putImageData(bd, 0, 0);
+
+  const maskDataUrl = bin.toDataURL('image/png');
+  const annId = Date.now().toString();
+  const label = document.getElementById('class-select').value || 'background';
+
+  setStatus('Saving…');
+  try {
+    const r = await fetch('/api/save_annotation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bbox:  S.bbox,
+        mask:  maskDataUrl,
+        id:    annId,
+        label: 'ink',
+      }),
+    });
+    const d = await r.json();
+    if (!d.success) { setStatus('Save failed: ' + (d.error || '?')); return; }
+
+    S.annotations.push({ id: annId, bbox: { ...S.bbox }, label, files: d.files });
+    refreshAnnList();
+    setStatus(`Saved annotation #${S.annotations.length} (patch + 3 mask formats).`);
+    cancelAnnotation();
+
+  } catch (err) { setStatus('Save error: ' + err.message); }
+}
+
+async function deleteAnnotation(id) {
+  try {
+    await fetch('/api/delete_annotation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    S.annotations = S.annotations.filter(a => a.id !== id);
+    refreshAnnList();
+    if (S.mode === 'selecting') drawSelection();
+  } catch (err) { setStatus('Delete error: ' + err.message); }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// Keyboard shortcuts
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const ann = S.mode === 'annotating';
+
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+    e.preventDefault(); undo(); return;
+  }
+  switch (e.key) {
+    case 'f': case 'F': if (ann) setDrawMode('freehand'); break;
+    case 'l': case 'L': if (ann) setDrawMode('line');     break;
+    case 'b': case 'B': if (ann) setDrawMode('box');      break;
+    case 'e': case 'E': if (ann) setDrawMode('erase');    break;
+    case '+': case '=': if (ann) { e.preventDefault(); stepZoom(+0.25); } break;
+    case '-': case '_': if (ann) { e.preventDefault(); stepZoom(-0.25); } break;
+    case '[':
+      if (ann) {
+        const v = Math.max(1, S.brushSize - 1);
+        S.brushSize = v;
+        document.getElementById('brush-slider').value = v;
+        document.getElementById('brush-val').textContent = v + 'px';
+      }
+      break;
+    case ']':
+      if (ann) {
+        const v = Math.min(80, S.brushSize + 1);
+        S.brushSize = v;
+        document.getElementById('brush-slider').value = v;
+        document.getElementById('brush-val').textContent = v + 'px';
+      }
+      break;
+    case 's': case 'S': if (ann && !e.ctrlKey) { e.preventDefault(); saveAnnotation(); } break;
+    case 'Escape':       if (ann) cancelAnnotation(); break;
+    case 'Enter':        if (S.mode === 'selecting' && S.bbox) confirmSelection(); break;
+  }
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+// Resize handler
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  if (S.mode === 'selecting')  { resizeCanvasToPanel(); drawSelection(); }
+  if (S.mode === 'annotating') { resizeCanvasToPanel(); drawAnnotation(); }
+});
+
+
+// ═══════════════════════════════════════════════════════════════
+// On load: check for --image preload from server
+// ═══════════════════════════════════════════════════════════════
+(async () => {
+    // populate class selector
+    try {
+        const rc = await fetch('/api/classes');
+        const dc = await rc.json();
+        const sel = document.getElementById('class-select');
+        dc.classes.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            sel.appendChild(opt);
+        });
+    } catch(_) {}
+
+    // pre-load image from --image cli arg
+    try {
+        const r = await fetch('/api/preload');
+        const d = await r.json();
+        if (d.path) {
+        loadImageByPath(d.path);
+        }
+    } catch (_) {}
+})();
+</script>
+</body>
+</html>
