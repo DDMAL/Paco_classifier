@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import logging
+import os
 import os.path as osp
 
 from .data_loader import Data, DataContainer
@@ -12,19 +13,36 @@ def bytes2Gb(b):
 
 def getMemoryLimit():
     """
-    Read from /sys/fs/cgroup/memory/memory.limit_in_bytes to see the RAM size
-    of the contaier.
+    Read the container's memory limit and return it in Gb.
+
+    Supports both cgroup v2 (/sys/fs/cgroup/memory.max, used by modern kernels
+    such as Ubuntu 22.04+/kernel 5.15+) and legacy cgroup v1
+    (/sys/fs/cgroup/memory/memory.limit_in_bytes). When the limit is unset
+    ("max") or neither file exists, fall back to the host's physical RAM.
+
+    Returning 0 here silently disables training (the per-layer RAM guard in
+    preprocess() rejects every layer when ram_limit <= 0), so we must never
+    return 0 on a machine that actually has memory.
 
     Return:
         RAM size in Gb
-
-    from: https://carlosbecker.com/posts/python-docker-limits/
     """
-    mem = 0
-    if osp.isfile('/sys/fs/cgroup/memory/memory.limit_in_bytes'):
-        with open('/sys/fs/cgroup/memory/memory.limit_in_bytes') as limit:
-            mem = int(limit.read()) # bytes
-    return bytes2Gb(mem)
+    # Total physical RAM is both the fallback and an upper bound: an unlimited
+    # cgroup reports either the string "max" or a huge sentinel (~2**63), and
+    # neither should be treated as real available memory.
+    phys = os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+    limit = phys
+    for path in (
+        '/sys/fs/cgroup/memory.max',                     # cgroup v2
+        '/sys/fs/cgroup/memory/memory.limit_in_bytes',   # cgroup v1
+    ):
+        if osp.isfile(path):
+            with open(path) as f:
+                value = f.read().strip()
+            if value.isdigit():  # a digit string means an enforced limit is set
+                limit = min(int(value), phys)
+            break
+    return bytes2Gb(limit)
 
 def getMaskFromRegion(region_path):
     """
