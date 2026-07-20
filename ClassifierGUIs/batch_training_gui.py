@@ -4,7 +4,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from gui_common import (FileListPanel, LogPanel, MODEL_FILETYPES, build_param_grid,
+from gui_common import (FileListPanel, LogPanel, MODEL_FILETYPES, ScrollableFrame, build_param_grid,
                          build_train_cmd, make_browse_row, resolve_training_python, validate_job)
 
 
@@ -18,16 +18,22 @@ class BatchTrainingGUI(tk.Tk):
         self._jobs = []  # list of job dicts, in run order
         self._stop_requested = False
 
-        self._notebook = ttk.Notebook(self)
+        scroll = ScrollableFrame(self)
+        scroll.pack(fill='both', expand=True)
+        body = scroll.body
+
+        self._notebook = ttk.Notebook(body)
         self._notebook.pack(fill='x', padx=10, pady=(10, 4))
 
         self._build_job_editor_tab()
         self._build_queue_tab()
-        self._build_run_controls()
+        self._build_run_controls(body)
 
-        self._log = LogPanel(self)
+        self._log = LogPanel(body)
         self._log.pack(fill='both', expand=True, padx=10, pady=(0, 10))
         self._log.poll(self)
+
+        scroll.enable_mousewheel()
 
     # --- job editor tab (mirrors training_gui.py's form) ---
 
@@ -38,7 +44,7 @@ class BatchTrainingGUI(tk.Tk):
         self._images_panel = FileListPanel(tab, "Input Images", add_label="+ Add Image", height=3)
         self._images_panel.pack(fill='x', pady=2)
 
-        self._bg_panel = FileListPanel(tab, "Background Masks (one per image)", add_label="+ Add BG Mask", height=3)
+        self._bg_panel = FileListPanel(tab, "Background Masks (optional, one per image)", add_label="+ Add BG Mask", height=3)
         self._bg_panel.pack(fill='x', pady=2)
 
         self._layer_panel = FileListPanel(tab, "Layer Masks (flat list)", add_label="+ Add Layer Mask", height=3)
@@ -56,7 +62,7 @@ class BatchTrainingGUI(tk.Tk):
         outdir_frame = tk.Frame(tab)
         outdir_frame.pack(fill='x', pady=4)
         self._outdir_var = tk.StringVar()
-        make_browse_row(outdir_frame, "Output dir:", self._outdir_var, filedialog.askdirectory)
+        make_browse_row(outdir_frame, "Output dir:", self._outdir_var, filedialog.askdirectory, readonly=True)
 
         btn_row = tk.Frame(tab)
         btn_row.pack(fill='x', pady=(4, 8))
@@ -182,8 +188,8 @@ class BatchTrainingGUI(tk.Tk):
 
     # --- run controls ---
 
-    def _build_run_controls(self):
-        row = tk.Frame(self)
+    def _build_run_controls(self, parent):
+        row = tk.Frame(parent)
         row.pack(fill='x', padx=10, pady=(0, 4))
         self._stop_on_error_var = tk.BooleanVar(value=False)
         tk.Checkbutton(row, text="Stop queue on first error", variable=self._stop_on_error_var).pack(side='left')

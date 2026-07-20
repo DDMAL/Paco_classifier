@@ -10,6 +10,48 @@ IMAGE_FILETYPES = [("Image / PNG", "*.png *.jpg *.jpeg *.tif *.tiff *.bmp"),
 MODEL_FILETYPES = [("Model files", "*.h5"), ("All files", "*.*")]
 
 
+class ScrollableFrame(tk.Frame):
+    """A vertically scrollable container with mouse wheel support.
+
+    Build widgets inside `.body` instead of directly on the parent. Call
+    `enable_mousewheel()` once, after all widgets have been added to `.body`,
+    so hovering anywhere over the window scrolls it. Listbox/Text/Treeview
+    widgets are left alone since Tk already gives them their own native wheel
+    scrolling (verified on this project's Tk 8.6 build) -- forwarding the
+    wheel there too would double-scroll them against this container.
+    """
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self._canvas = tk.Canvas(self, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(self, orient='vertical', command=self._canvas.yview)
+        self._canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side='right', fill='y')
+        self._canvas.pack(side='left', fill='both', expand=True)
+
+        self.body = tk.Frame(self._canvas)
+        window_id = self._canvas.create_window((0, 0), window=self.body, anchor='nw')
+
+        self.body.bind('<Configure>', lambda _: self._canvas.configure(scrollregion=self._canvas.bbox('all')))
+        self._canvas.bind('<Configure>', lambda e: self._canvas.itemconfig(window_id, width=e.width))
+
+    def _on_wheel(self, event):
+        if event.num == 5 or event.delta < 0:
+            self._canvas.yview_scroll(1, 'units')
+        elif event.num == 4 or event.delta > 0:
+            self._canvas.yview_scroll(-1, 'units')
+
+    def enable_mousewheel(self):
+        def bind_tree(widget):
+            if not isinstance(widget, (tk.Listbox, tk.Text, ttk.Treeview)):
+                for seq in ('<MouseWheel>', '<Button-4>', '<Button-5>'):
+                    widget.bind(seq, self._on_wheel, add='+')
+            for child in widget.winfo_children():
+                bind_tree(child)
+        bind_tree(self.body)
+        bind_tree(self._canvas)
+
+
 def resolve_training_python():
     """Path to the Python that has the project's ML deps installed (TensorFlow, etc.).
 
@@ -76,11 +118,15 @@ class FileListPanel(tk.LabelFrame):
         self.listbox.delete(0, tk.END)
 
 
-def make_browse_row(parent, label, var, dialog_cmd, width=50):
+def make_browse_row(parent, label, var, dialog_cmd, width=50, readonly=False):
     row = tk.Frame(parent)
     row.pack(fill='x', pady=2)
     tk.Label(row, text=label, width=20, anchor='w').pack(side='left')
-    tk.Entry(row, textvariable=var, width=width).pack(side='left', fill='x', expand=True)
+    if readonly:
+        entry = ttk.Entry(row, textvariable=var, width=width, state='readonly')
+    else:
+        entry = tk.Entry(row, textvariable=var, width=width)
+    entry.pack(side='left', fill='x', expand=True)
     tk.Button(row, text="Browse", command=lambda: var.set(dialog_cmd() or var.get())).pack(side='left')
     return row
 
@@ -129,7 +175,7 @@ def validate_job(job):
 
     if not images:
         errors.append("Add at least one image.")
-    if len(bg) != len(images):
+    if bg and len(bg) != len(images):
         errors.append(f"Background masks ({len(bg)}) must equal image count ({len(images)}).")
     if not layers or (images and len(layers) % len(images) != 0):
         errors.append(f"Layer masks ({len(layers)}) must be a non-zero multiple of image count ({len(images)}).")
@@ -138,7 +184,7 @@ def validate_job(job):
     if not outdir:
         errors.append("Choose an output directory.")
 
-    num_labels = 1 + (len(layers) // len(images) if images and layers else 0)
+    num_labels = (1 if bg else 0) + (len(layers) // len(images) if images and layers else 0)
     if pretrained and len(pretrained) != num_labels:
         errors.append(
             f"Pretrained models ({len(pretrained)}) must equal number of labels "
@@ -152,7 +198,6 @@ def build_train_cmd(job, script_path, python_executable):
     cmd = [
         python_executable, "-u", script_path,
         "--images", *job["images"],
-        "--background-mask", *job["bg"],
         "--layer-masks", *job["layers"],
         "--output-dir", job["outdir"],
         "--height", str(job["params"]["height"]),
@@ -162,6 +207,8 @@ def build_train_cmd(job, script_path, python_executable):
         "--batch-size", str(job["params"]["batch_size"]),
         "--ram-limit", str(job["params"]["ram_limit"]),
     ]
+    if job.get("bg"): 
+        cmd += ["--background-mask", *job["bg"]]
     if job.get("regions"):
         cmd += ["--regions-mask", *job["regions"]]
     if job.get("pretrained"):

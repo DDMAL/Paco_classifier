@@ -19,7 +19,7 @@ def load_alpha_mask(path):
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Calvo training script on images")
     parser.add_argument("--images",  nargs="+", required=True,  help="Path(s) to source image(s)")
-    parser.add_argument("--background-mask", nargs="+", required=True, help="Path(s) to background mask(s) - one bg RGBA PNG per image")
+    parser.add_argument("--background-mask", nargs="+", default=None, help="(optional) Path(s) to background mask(s) - one bg RGBA PNG per image")
     parser.add_argument("--layer-masks", nargs="+", required=True, help="Flat list, chunked by len(images) per layer")
     parser.add_argument("--output-dir", type=str, required=True, help="Directory for .h5 model files")
     parser.add_argument("--height", type=int, required=True)
@@ -30,7 +30,7 @@ def parse_args():
     parser.add_argument("--ram-limit", type=float, required=True, help="in GB, passed to DataContainer")
     parser.add_argument("--regions-mask", nargs="+", default=None, help="One selected-regions RGBA PNG per image")
     parser.add_argument("--pretrained-models", nargs="+", default=None,
-                        help="Paths to existing .h5 models to fine-tune, one per label (background first, then layers in order)")
+                        help="Paths to existing .h5 models to fine-tune, one per label (background first if --background-mask is given, then layers in order)")
     return parser.parse_args()
 
 
@@ -40,7 +40,9 @@ def main():
 
     # Validation
     n = len(args.images)
-    assert len(args.background_mask) == n, f"--background-mask must have {n} entries"
+    has_background = bool(args.background_mask)
+    if has_background:
+        assert len(args.background_mask) == n, f"--background-mask must have {n} entries"
     assert len(args.layer_masks) % n == 0, f"--layer-masks count must be a multiple of {n}"
     if args.regions_mask:
         assert len(args.regions_mask) == n, f"--regions-mask must have {n} entries"
@@ -50,7 +52,7 @@ def main():
         args.layer_masks[i*n:(i+1)*n]
         for i in range(len(args.layer_masks)//n)
     ]
-    num_labels = 1 + len(layer_mask_groups) # background + N layers
+    num_labels = (1 if has_background else 0) + len(layer_mask_groups) # background + N layers
 
     if args.pretrained_models and len(args.pretrained_models) != num_labels:
         print(f"Error: --pretrained-models must have {num_labels} entries (background + {num_labels - 1} layer(s)), got {len(args.pretrained_models)}.", file=sys.stderr)
@@ -72,7 +74,7 @@ def main():
 
             regions_mask = load_alpha_mask(args.regions_mask[idx]) if args.regions_mask else None
 
-            masks = [load_alpha_mask(args.background_mask[idx])] + [
+            masks = ([load_alpha_mask(args.background_mask[idx])] if has_background else []) + [
                 load_alpha_mask(group[idx]) for group in layer_mask_groups
             ]
             _GB = 1024 ** 3

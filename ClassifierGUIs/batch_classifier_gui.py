@@ -4,6 +4,7 @@ import threading, queue, os, sys
 from itertools import product
 import cv2, numpy as np
 from Paco_classifier import recognition_engine as recognition
+from gui_common import ScrollableFrame
 
 IMAGE_EXTS = {'.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp'}
 
@@ -12,7 +13,13 @@ class BatchClassifierGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Paco Batch Classifier")
+        self.geometry("760x800")
         self._log_queue = queue.Queue()
+
+        scroll = ScrollableFrame(self)
+        scroll.pack(fill='both', expand=True)
+        self._body = scroll.body
+
         self.build_inputs()
         self.build_bg_models()
         self.build_layer_models()
@@ -21,10 +28,12 @@ class BatchClassifierGUI(tk.Tk):
         self.build_output_area()
         self.poll_log_queue()
 
+        scroll.enable_mousewheel()
+
     # Building GUI layout
 
     def build_inputs(self):
-        frame = tk.LabelFrame(self, text="Inputs", padx=8, pady=8)
+        frame = tk.LabelFrame(self._body, text="Inputs", padx=8, pady=8)
         frame.pack(fill='x', padx=10, pady=5)
 
         self.image_dir_var = tk.StringVar()
@@ -33,10 +42,10 @@ class BatchClassifierGUI(tk.Tk):
 
         self.outdir_var = tk.StringVar()
         self.make_browse_row(frame, "Output Dir:", self.outdir_var,
-                             lambda: filedialog.askdirectory())
+                             lambda: filedialog.askdirectory(), readonly=True)
 
     def build_bg_models(self):
-        frame = tk.LabelFrame(self, text="Background Models", padx=8, pady=8)
+        frame = tk.LabelFrame(self._body, text="Background Models", padx=8, pady=8)
         frame.pack(fill='x', padx=10, pady=5)
 
         self.bg_frame = tk.Frame(frame)
@@ -51,7 +60,7 @@ class BatchClassifierGUI(tk.Tk):
                   command=lambda: self.add_model_row(self.bg_frame, self.bg_vars, self.bg_rows)).pack(side='left')
 
     def build_layer_models(self):
-        frame = tk.LabelFrame(self, text="Layer Models", padx=8, pady=8)
+        frame = tk.LabelFrame(self._body, text="Layer Models", padx=8, pady=8)
         frame.pack(fill='x', padx=10, pady=5)
 
         self.layer_frame = tk.Frame(frame)
@@ -66,7 +75,7 @@ class BatchClassifierGUI(tk.Tk):
                   command=lambda: self.add_model_row(self.layer_frame, self.layer_vars, self.layer_rows)).pack(side='left')
 
     def build_params(self):
-        frame = tk.LabelFrame(self, text="Parameters", padx=8, pady=8)
+        frame = tk.LabelFrame(self._body, text="Parameters", padx=8, pady=8)
         frame.pack(fill='x', padx=10, pady=5)
 
         spin_row = tk.Frame(frame)
@@ -80,12 +89,12 @@ class BatchClassifierGUI(tk.Tk):
                         width=6).pack(side='left', padx=(0, 12))
 
     def build_run_button(self):
-        self.run_btn = tk.Button(self, text="Run Batch",
+        self.run_btn = tk.Button(self._body, text="Run Batch",
                                  command=self.on_run, font=('TkDefaultFont', 11, 'bold'))
         self.run_btn.pack(pady=8)
 
     def build_output_area(self):
-        log_frame = tk.LabelFrame(self, text="Progress", padx=8, pady=8)
+        log_frame = tk.LabelFrame(self._body, text="Progress", padx=8, pady=8)
         log_frame.pack(fill='x', padx=10, pady=5)
 
         self.status_label = tk.Label(log_frame, text="", anchor='w')
@@ -97,13 +106,17 @@ class BatchClassifierGUI(tk.Tk):
 
     # Helper methods
 
-    def make_browse_row(self, parent, label, var, cmd):
+    def make_browse_row(self, parent, label, var, cmd, readonly=False):
         row = tk.Frame(parent)
         row.pack(anchor='w', pady=2)
         tk.Label(row, text=label, width=18, anchor='w').pack(side='left')
-        tk.Entry(row, textvariable=var, width=50).pack(side='left')
+        if readonly:
+            entry = ttk.Entry(row, textvariable=var, width=50, state='readonly')
+        else:
+            entry = tk.Entry(row, textvariable=var, width=50)
+        entry.pack(side='left')
         tk.Button(row, text="Browse",
-                  command=lambda: var.set(cmd())).pack(side='left')
+                  command=lambda: var.set(cmd() or var.get())).pack(side='left')
 
     def add_model_row(self, parent_frame, vars_list, rows_list, path=""):
         var = tk.StringVar(value=path)

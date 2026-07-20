@@ -3,23 +3,32 @@ from tkinter import ttk, filedialog, scrolledtext, messagebox
 import threading, queue, os, sys
 import cv2, numpy as np
 from Paco_classifier import recognition_engine as recognition
+from gui_common import ScrollableFrame
 
 class ClassifierGUI(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Paco Classifier")
+        self.geometry("700x760")
         self._log_queue = queue.Queue()
+
+        scroll = ScrollableFrame(self)
+        scroll.pack(fill='both', expand=True)
+        self._body = scroll.body
+
         self.build_inputs()
         self.build_params()
         self.build_run_button()
         self.build_output_area()
         self.poll_log_queue()
 
+        scroll.enable_mousewheel()
+
 
     # Building GUI layout 
 
     def build_inputs(self):
-          frame = tk.LabelFrame(self, text="Inputs", padx=8, pady=8)
+          frame = tk.LabelFrame(self._body, text="Inputs", padx=8, pady=8)
           frame.pack(fill='x', padx=10, pady=5)
 
           #Image row
@@ -44,16 +53,20 @@ class ClassifierGUI(tk.Tk):
           tk.Button(btn_row, text="+ Add Layer",
                     command=self.add_layer_row).pack(side='left')
         
-    def make_browse_row(self, parent, label, var, cmd):
+    def make_browse_row(self, parent, label, var, cmd, readonly=False):
           row = tk.Frame(parent)
           row.pack(anchor='w', pady=2)
           tk.Label(row, text=label, width=18, anchor='w').pack(side='left')
-          tk.Entry(row, textvariable=var, width=50).pack(side='left')
+          if readonly:
+              entry = ttk.Entry(row, textvariable=var, width=50, state='readonly')
+          else:
+              entry = tk.Entry(row, textvariable=var, width=50)
+          entry.pack(side='left')
           tk.Button(row, text="Browse",
-                    command=lambda: var.set(cmd())).pack(side='left')
+                    command=lambda: var.set(cmd() or var.get())).pack(side='left')
           
     def build_params(self):
-        frame = tk.LabelFrame(self, text="Parameters", padx=8, pady=8)
+        frame = tk.LabelFrame(self._body, text="Parameters", padx=8, pady=8)
         frame.pack(fill='x', padx=10, pady=5)
 
         spin_row = tk.Frame(frame)
@@ -69,23 +82,23 @@ class ClassifierGUI(tk.Tk):
                 
         self.outdir_var = tk.StringVar()
         self.make_browse_row(frame, "Output dir:", self.outdir_var,
-                                lambda: filedialog.askdirectory())
+                                lambda: filedialog.askdirectory(), readonly=True)
         
 
     def build_run_button(self):
-        self.run_btn = tk.Button(self, text="Run Classification",
+        self.run_btn = tk.Button(self._body, text="Run Classification",
                                  command=self.on_run, font=('TkDefaultFont', 11, 'bold'))
         self.run_btn.pack(pady=8)
 
     def build_output_area(self):
-         log_frame = tk.LabelFrame(self, text="progress", padx=8, pady=8)
+         log_frame = tk.LabelFrame(self._body, text="progress", padx=8, pady=8)
          log_frame.pack(fill='x', padx=10, pady=5)
          self.log = scrolledtext.ScrolledText(log_frame, height=8, state='disabled',
                                               font=('TkFixedFont',))
-         
+
          self.log.pack(fill='x')
 
-         thumb_outer = tk.LabelFrame(self, text="Output Images", padx=8, pady=8)
+         thumb_outer = tk.LabelFrame(self._body, text="Output Images", padx=8, pady=8)
          thumb_outer.pack(fill='x', padx=10, pady=5)
          self.thumb_frame = tk.Frame(thumb_outer)
          self.thumb_frame.pack(anchor='w')
