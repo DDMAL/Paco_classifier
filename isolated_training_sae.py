@@ -141,18 +141,28 @@ def train_msae(
         print("Training a new model for label #{}".format(str(label)))
         # Pretrained weights
         model_name = "Background Model" if label == 0 else "Model {}".format(label)
+        validation_steps = len(inputs.meta["Image"])
+        baseline_accuracy = None
         if models and model_name in models:
             model = load_model(models[model_name])
+            baseline_accuracy = model.evaluate(
+                generators_validation[label], steps=validation_steps, verbose=0
+            )[1]
+            print(f"Pretrained model val_accuracy baseline: {baseline_accuracy:.4f}")
         else:
             model = get_sae(height=height, width=width)
+
+        checkpoint = ModelCheckpoint(
+            output_path[str(label)],
+            save_best_only=True,
+            monitor="val_accuracy",
+            verbose=1,
+            mode="max",
+        )
+        if baseline_accuracy is not None:
+            checkpoint.best = baseline_accuracy
         callbacks_list = [
-            ModelCheckpoint(
-                output_path[str(label)],
-                save_best_only=True,
-                monitor="val_accuracy",
-                verbose=1,
-                mode="max",
-            ),
+            checkpoint,
             EarlyStopping(monitor="val_accuracy", patience=patience, verbose=0, mode="max"),
         ]
 
@@ -164,7 +174,7 @@ def train_msae(
             verbose=1,
             steps_per_epoch=steps_per_epoch,
             validation_data=generators_validation[label],
-            validation_steps=len(inputs.meta["Image"]),
+            validation_steps=validation_steps,
             callbacks=callbacks_list,
             epochs=epochs
         )

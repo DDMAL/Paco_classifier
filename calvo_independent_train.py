@@ -10,11 +10,16 @@ import numpy as np
 import isolated_training_sae as training
 from Paco_classifier.data_loader import DataContainer, Data, FileSelectionMode, SampleExtractionMode
 
-def load_alpha_mask(path):
+def load_alpha_mask(path, expected_shape=None):
     img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(f"Could not load image: {path} (resolved: {Path(path).resolve()})")
-    return img[:, :, 3] == 255
+    if img.ndim != 3 or img.shape[2] != 4:
+        raise ValueError(f"Expected an RGBA mask with an alpha channel, got shape {img.shape}: {path} (resolved: {Path(path).resolve()})")
+    mask = img[:, :, 3] == 255
+    if expected_shape is not None and mask.shape != expected_shape:
+        raise ValueError(f"Mask shape {mask.shape} does not match image shape {expected_shape}: {path} (resolved: {Path(path).resolve()})")
+    return mask
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run Calvo training script on images")
@@ -70,12 +75,14 @@ def main():
         for idx in range(n):
             image_stem = Path(args.images[idx]).stem
             img = cv2.imread(args.images[idx], cv2.IMREAD_COLOR)
+            if img is None:
+                raise FileNotFoundError(f"Could not load image: {args.images[idx]} (resolved: {Path(args.images[idx]).resolve()})")
             np.save(f"{tmpdir}/{image_stem}_image.npy", img)
 
-            regions_mask = load_alpha_mask(args.regions_mask[idx]) if args.regions_mask else None
+            regions_mask = load_alpha_mask(args.regions_mask[idx], expected_shape=img.shape[:2]) if args.regions_mask else None
 
-            masks = ([load_alpha_mask(args.background_mask[idx])] if has_background else []) + [
-                load_alpha_mask(group[idx]) for group in layer_mask_groups
+            masks = ([load_alpha_mask(args.background_mask[idx], expected_shape=img.shape[:2])] if has_background else []) + [
+                load_alpha_mask(group[idx], expected_shape=img.shape[:2]) for group in layer_mask_groups
             ]
             _GB = 1024 ** 3
             mask_sizes = {}
