@@ -257,7 +257,7 @@ def appendNewSample(gr, gt, row, col, patch_height, patch_width, gr_chunks, gt_c
     gt_sample = gt[
         row : row + patch_height, col : col + patch_width
     ]  # Ground truth
-    gr_chunks[index] = gr_sample
+    gr_chunks[index] = (255. - gr_sample) / 255.
     gt_chunks[index] = gt_sample
 
 def extractRandomSamplesClass(gr, gt, patch_height, patch_width, batch_size, gr_chunks, gt_chunks, potential_training_examples=None):
