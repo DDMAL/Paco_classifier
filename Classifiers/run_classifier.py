@@ -11,6 +11,13 @@ def main():
     parser.add_argument("--width",            type=int, default=256)
     parser.add_argument("--threshold",        type=int, default=50)
     parser.add_argument("--output-dir",       default=None,   help="Directory for output PNGs (default: image dir)")
+    scale_group = parser.add_mutually_exclusive_group()
+    scale_group.add_argument("--resize-ratio", type=float, default=None,
+                             help="Downscale factor (0 < r <= 1) applied before classification; "
+                             "output masks are restored to original resolution. Default: no resize.")
+    scale_group.add_argument("--max-dimension", type=int, default=None,
+        help="Downscale so the image's longer edge does not exceed this many "
+             "pixels (only ever shrinks, never grows). Default: no resize.")
     args = parser.parse_args()
 
     image = cv2.imread(args.image, 1)
@@ -22,7 +29,9 @@ def main():
 
     model_paths = [args.background_model] + args.layer_models
 
-    analyses = recognition.process_image_msae(image, model_paths, args.height, args.width, mode='logical')
+    analyses = recognition.process_image_msae(
+        image, model_paths, args.height, args.width, mode='logical',
+        resize_ratio=args.resize_ratio, max_dimension=args.max_dimension)
 
     image_base = os.path.splitext(os.path.basename(args.image))[0]
     for id_label, _ in enumerate(model_paths):

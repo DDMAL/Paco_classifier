@@ -73,11 +73,12 @@ class ClassifierGUI(tk.Tk):
         spin_row.pack(anchor='w')
         for label, attr, default in [("Height", "height_var", 256),
                                        ("Width", "width_var", 256),
-                                       ("Threshold", "thresh_var", 50)]:
+                                       ("Threshold", "thresh_var", 50),
+                                       ("Max Dimension (0=off)", "max_dim_var", 0)]:
             tk.Label(spin_row, text=label).pack(side='left')
             var = tk.StringVar(value=str(default))
             setattr(self, attr, var)
-            ttk.Spinbox(spin_row, from_=1, to=9999, textvariable=var,
+            ttk.Spinbox(spin_row, from_=0, to=99999, textvariable=var,
                         width=6).pack(side='left', padx=(0, 12))
                 
         self.outdir_var = tk.StringVar()
@@ -180,7 +181,10 @@ class ClassifierGUI(tk.Tk):
                 return
             height = int(self.height_var.get())
             width = int(self.width_var.get())
-            analyses = recognition.process_image_msae(image, model_paths, height, width, mode='logical')
+            max_dim = int(self.max_dim_var.get())
+            analyses = recognition.process_image_msae(
+                image, model_paths, height, width, mode='logical',
+                max_dimension=(max_dim if max_dim > 0 else None))
             output_paths = []
             for id_label, _ in enumerate(model_paths):
                    label_range = np.array(id_label, dtype=np.uint8)

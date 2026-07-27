@@ -81,11 +81,12 @@ class BatchClassifierGUI(tk.Tk):
         spin_row = tk.Frame(frame)
         spin_row.pack(anchor='w')
         for label, attr, default in [("Height", "height_var", 256),
-                                      ("Width",  "width_var",  256)]:
+                                      ("Width",  "width_var",  256),
+                                      ("Max Dimension (0=off)", "max_dim_var", 0)]:
             tk.Label(spin_row, text=label).pack(side='left')
             var = tk.StringVar(value=str(default))
             setattr(self, attr, var)
-            ttk.Spinbox(spin_row, from_=1, to=9999, textvariable=var,
+            ttk.Spinbox(spin_row, from_=0, to=99999, textvariable=var,
                         width=6).pack(side='left', padx=(0, 12))
 
     def build_run_button(self):
@@ -153,9 +154,9 @@ class BatchClassifierGUI(tk.Tk):
             output_dir = self.outdir_var.get()
             height = int(self.height_var.get())
             width = int(self.width_var.get())
+            max_dim = int(self.max_dim_var.get())
             bg_paths = [v.get() for v in self.bg_vars if v.get()]
             layer_paths = [v.get() for v in self.layer_vars if v.get()]
-
             if not image_dir or not output_dir:
                 print("Error: image folder and output dir are required.")
                 return
@@ -204,7 +205,8 @@ class BatchClassifierGUI(tk.Tk):
 
                     image_base = os.path.splitext(img_file)[0]
                     analyses = recognition.process_image_msae(
-                        image, model_paths, height, width, mode='logical')
+                        image, model_paths, height, width, mode='logical',
+                        max_dimension=(max_dim if max_dim > 0 else None))
 
                     for id_label, _ in enumerate(model_paths):
                         label_range = np.array(id_label, dtype=np.uint8)

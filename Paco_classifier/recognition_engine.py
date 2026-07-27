@@ -1,4 +1,5 @@
 from __future__ import division
+from Paco_classifier import image_scaling
 
 import cv2
 import numpy as np
@@ -36,7 +37,8 @@ def process_image(image, model_path, vspan, hspan):
     return output
 
 
-def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
+def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
+                       resize_ratio=None, max_dimension=None):
     """
     Takes a document image and pre-trained SAE model paths
     and returns a single image with logical labels.
@@ -45,6 +47,16 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
     num_labels = len(model_paths)
     padding = 25
 
+    orig_height, orig_width = image.shape[:2]
+    scale_ratio = image_scaling.compute_scale_ratio(
+        orig_width, orig_height, w_height, w_width,
+        max_dimension=max_dimension, ratio=resize_ratio)
+    if scale_ratio < 1.0:
+        image = image_scaling.resize_image_down(image, scale_ratio)
+        print(f"Resizing input {orig_width}x{orig_height} -> "
+              f"{image.shape[1]}x{image.shape[0]} (ratio={scale_ratio:.4f}) "
+              f"before classification")
+        
     #Including padding at the edges due to the unreliability of the model's predictions along the borders.
     image_with_padding = cv2.copyMakeBorder(image, padding, padding, padding, padding, cv2.BORDER_REPLICATE)
     [img_height_pad, img_width_pad, channels_pad] = image_with_padding.shape
@@ -101,5 +113,8 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
         output_images_no_pad = [output_image[padding:w_height-padding, padding:w_height-padding] for output_image in output_images]
         return output_images_no_pad
     elif mode == 'logical':
-        return output_image[padding:padding+img_height, padding:padding+img_width]
+        result = output_image[padding:padding+img_height, padding:padding+img_width]
+        if scale_ratio < 1.0:
+            result = image_scaling.restore_label_map(result, orig_width, orig_height)
+        return result
 

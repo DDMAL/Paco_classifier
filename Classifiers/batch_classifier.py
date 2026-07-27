@@ -19,6 +19,13 @@ def main():
     parser.add_argument("--width",              type=int, default=256)
     parser.add_argument("--output-dir",         required=True,
                         help="Root directory for output (one subdirectory per combination)")
+    scale_group = parser.add_mutually_exclusive_group()
+    scale_group.add_argument("--resize-ratio", type=float, default=None,
+        help="Downscale factor (0 < r <= 1) applied before classification; "
+             "output masks are restored to original resolution. Default: no resize.")
+    scale_group.add_argument("--max-dimension", type=int, default=None,
+        help="Downscale so the image's longer edge does not exceed this many "
+             "pixels (only ever shrinks, never grows). Default: no resize.")
     args = parser.parse_args()
 
     image_files = sorted(
@@ -55,7 +62,8 @@ def main():
 
             image_base = os.path.splitext(img_file)[0]
             analyses = recognition.process_image_msae(
-                image, model_paths, args.height, args.width, mode='logical')
+                image, model_paths, args.height, args.width, mode='logical',
+                resize_ratio=args.resize_ratio, max_dimension=args.max_dimension)
 
             for id_label, _ in enumerate(model_paths):
                 label_range = np.array(id_label, dtype=np.uint8)
