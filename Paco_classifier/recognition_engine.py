@@ -7,6 +7,13 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.backend import image_data_format
 
 
+class ClassificationCancelled(Exception):
+    """Raised by process_image_msae() when its should_cancel callback
+    reports True. Lets a caller running this on a background thread (e.g.
+    a server request whose client disconnected) stop the sliding-window
+    pass between patches instead of paying for the whole page regardless."""
+
+
 def process_image(image, model_path, vspan, hspan):
     """
     Takes a document image and a pre-trained model path
@@ -38,10 +45,17 @@ def process_image(image, model_path, vspan, hspan):
 
 
 def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
-                       resize_ratio=None, max_dimension=None):
+                       resize_ratio=None, max_dimension=None, should_cancel=None):
     """
     Takes a document image and pre-trained SAE model paths
     and returns a single image with logical labels.
+
+    should_cancel, if given, is a zero-arg callable polled once per patch
+    (each row/col step of the sliding window below) -- if it ever returns
+    True, raises ClassificationCancelled immediately instead of finishing
+    the rest of the page. Optional and defaults to None (no polling, same
+    behavior as before this parameter existed) so every existing caller
+    keeps working unchanged.
     """
 
     num_labels = len(model_paths)
@@ -79,6 +93,8 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
     for row in range(0, img_height_pad, w_height-padding*2-1):
         print(str(row) + ' / ' + str(img_height_pad))
         for col in range(0, img_width, w_width-padding*2-1):
+            if should_cancel is not None and should_cancel():
+                raise ClassificationCancelled()
 
             # Modifying the row and column indices to always cover the right and bottom borders of the image.
             row = min(row, img_height_pad-w_height)
