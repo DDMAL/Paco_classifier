@@ -45,7 +45,8 @@ def process_image(image, model_path, vspan, hspan):
 
 
 def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
-                       resize_ratio=None, max_dimension=None, should_cancel=None):
+                       resize_ratio=None, max_dimension=None, should_cancel=None,
+                       progress_callback=None):
     """
     Takes a document image and pre-trained SAE model paths
     and returns a single image with logical labels.
@@ -56,6 +57,15 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
     the rest of the page. Optional and defaults to None (no polling, same
     behavior as before this parameter existed) so every existing caller
     keeps working unchanged.
+
+    progress_callback, if given, is called as progress_callback(row, total)
+    once per sliding-window row step (mirrors should_cancel's shape) --
+    `row` is exactly the pixel offset already printed below ("N / total"),
+    `total` is img_height_pad. Optional and defaults to None so every
+    existing caller keeps working unchanged. Lets a caller running this on
+    a server (paco-classifier-service) relay real progress to its own
+    caller instead of only the bare "N / total" console print this
+    function already did.
     """
 
     num_labels = len(model_paths)
@@ -92,6 +102,8 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
 
     for row in range(0, img_height_pad, w_height-padding*2-1):
         print(str(row) + ' / ' + str(img_height_pad))
+        if progress_callback is not None:
+            progress_callback(row, img_height_pad)
         for col in range(0, img_width, w_width-padding*2-1):
             if should_cancel is not None and should_cancel():
                 raise ClassificationCancelled()
