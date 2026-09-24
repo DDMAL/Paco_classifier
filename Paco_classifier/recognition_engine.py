@@ -1,10 +1,49 @@
 from __future__ import division
 from Paco_classifier import image_scaling
 
+import os
+import threading
+
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.backend import image_data_format
+
+
+# Loaded .h5 models, keyed by (path, mtime_ns, size) so a swapped-in
+# retrained checkpoint is picked up instead of silently serving the old
+# weights. process_image_msae() used to call load_model() on BOTH models on
+# every single call, i.e. once per page for a server that classifies pages
+# one at a time -- measured at ~4.3s on a cold page cache and ~0.35s warm.
+#
+# _MODEL_CACHE_LOCK guards the CACHE and the load itself, so two threads
+# racing on the same page size can't both pay for the same deserialize.
+# Inference is deliberately NOT serialized: `model(x, training=False)` on a
+# functional Keras model reads the weights and mutates nothing on the model
+# object (unlike, say, kraken's TorchSeqRecognizer, which stashes per-call
+# state on itself), so concurrent callers can share one instance -- which is
+# the ordinary way Keras models are served.
+_MODEL_CACHE = {}
+_MODEL_CACHE_LOCK = threading.Lock()
+
+
+def load_model_cached(model_path):
+    """load_model(), memoized on the file's identity + mtime + size."""
+    try:
+        st = os.stat(model_path)
+        key = (str(model_path), st.st_mtime_ns, st.st_size)
+    except OSError:
+        # Unstattable path: fall back to loading every time rather than
+        # caching under a key that can't detect a change.
+        return load_model(model_path)
+    with _MODEL_CACHE_LOCK:
+        model = _MODEL_CACHE.get(key)
+        if model is None:
+            model = load_model(model_path)
+            # One entry per distinct weights file. The caller passes a fixed
+            # pair of paths, so this never grows unboundedly in practice.
+            _MODEL_CACHE[key] = model
+        return model
 
 
 class ClassificationCancelled(Exception):
@@ -87,7 +126,7 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
 
     sae_models = []
     for id_label in range(num_labels):
-        sae_models.append(load_model(model_paths[id_label]))
+        sae_models.append(load_model_cached(model_paths[id_label]))
 
     [img_height, img_width, channels] = image.shape
 
@@ -100,41 +139,77 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
     elif mode == 'logical':
         output_image = np.zeros((img_height_pad+padding*2, img_width_pad+padding*2), 'uint8')
 
+    # One BATCH of patches per sliding-window row, rather than one model
+    # call per patch per model. This used to run
+    # `sae_models[id].predict(sample)` with a batch of exactly 1, twice per
+    # patch -- 84 separate Keras calls for a 1064x1342 page, measured at
+    # ~14s on a 2-CPU pod. Two separate costs were being paid 84 times:
+    # Keras's own per-`predict()` machinery (dataset adapter, callback list,
+    # a tf.function re-entry) and a matmul too small to use the available
+    # cores. Batching a whole row fixes both.
+    #
+    # Batching per ROW, rather than over the whole page, bounds peak memory
+    # without needing a chunk-size knob: a row is `cols` patches of
+    # w_height*w_width*3 float64, so ~4.7MB for the 6-column page above and
+    # ~23MB for a 6000px-wide one.
+    #
+    # The (row, col) arithmetic below is preserved EXACTLY as it was, and
+    # deliberately so -- it has two quirks that a tidy-up would silently
+    # change. `row` was reassigned inside the inner loop, so the clamp stuck
+    # for the rest of that row (reproduced here as `row_eff`, computed once
+    # per row); and the column loop ranges over the UNPADDED `img_width`
+    # while the row loop uses the padded height. Output must stay
+    # byte-identical, so neither is "fixed" here.
     for row in range(0, img_height_pad, w_height-padding*2-1):
         print(str(row) + ' / ' + str(img_height_pad))
         if progress_callback is not None:
             progress_callback(row, img_height_pad)
+
+        # Modifying the row and column indices to always cover the right and bottom borders of the image.
+        row_eff = min(row, img_height_pad-w_height)
+
+        samples = []
+        col_effs = []
         for col in range(0, img_width, w_width-padding*2-1):
             if should_cancel is not None and should_cancel():
                 raise ClassificationCancelled()
 
-            # Modifying the row and column indices to always cover the right and bottom borders of the image.
-            row = min(row, img_height_pad-w_height)
-            col = min(col, img_width_pad -w_width)
+            col_eff = min(col, img_width_pad -w_width)
 
-            sample = image_with_padding[row:row+w_height, col:col+w_width]
+            sample = image_with_padding[row_eff:row_eff+w_height, col_eff:col_eff+w_width]
 
             # Pre-process (check that training does the same!)
             sample = (255. - sample) / 255.
 
-            if image_data_format() == 'channels_first':
-                sample = np.asarray(sample).reshape(1, 3, w_height, w_width)
-            else:
-                sample = np.asarray(sample).reshape(1, w_height, w_width, 3)
+            samples.append(sample)
+            col_effs.append(col_eff)
 
+        if not samples:
+            continue
+
+        batch = np.asarray(samples)
+        if image_data_format() == 'channels_first':
+            batch = batch.reshape(len(samples), 3, w_height, w_width)
+        else:
+            batch = batch.reshape(len(samples), w_height, w_width, 3)
+
+        # model(x, training=False) rather than model.predict(x): identical
+        # inference-mode arithmetic (predict() sets training=False too), minus
+        # the per-call dataset/callback plumbing that made up a real share of
+        # the 84-call cost. np.asarray() because this returns an EagerTensor,
+        # and the indexing below is numpy's.
+        predictions = [np.asarray(model(batch, training=False)) for model in sae_models]
+
+        for i, col_eff in enumerate(col_effs):
             if mode == 'masks':
 
                 for id_label in range(num_labels):
-                    prediction = sae_models[id_label].predict(sample)
-                    output_images[id_label][row+padding:row+w_height-padding,col+padding:col+w_width-padding] = 100*prediction[0,padding:w_height-padding,padding:w_width-padding,0]
+                    output_images[id_label][row_eff+padding:row_eff+w_height-padding,col_eff+padding:col_eff+w_width-padding] = 100*predictions[id_label][i,padding:w_height-padding,padding:w_width-padding,0]
 
             elif mode == 'logical':
-                predictions = []
+                patch_predictions = [predictions[id_label][i,:,:,0] for id_label in range(num_labels)]
 
-                for id_label in range(num_labels):
-                    predictions.append( sae_models[id_label].predict(sample)[0,:,:,0]  )
-
-                output_image[row+padding:row+w_height-padding,col+padding:col+w_width-padding] = np.argmax( predictions, axis = 0 )[padding:w_height-padding, padding:w_width-padding]
+                output_image[row_eff+padding:row_eff+w_height-padding,col_eff+padding:col_eff+w_width-padding] = np.argmax( patch_predictions, axis = 0 )[padding:w_height-padding, padding:w_width-padding]
 
     #Cutting the padding to obtain the same image resolution as the original image.
     if mode == 'masks':
