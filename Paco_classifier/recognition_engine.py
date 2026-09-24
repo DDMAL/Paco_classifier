@@ -1,9 +1,17 @@
 from __future__ import division
+from Paco_classifier import image_scaling
 
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
 from tensorflow.keras.backend import image_data_format
+
+
+class ClassificationCancelled(Exception):
+    """Raised by process_image_msae() when its should_cancel callback
+    reports True. Lets a caller running this on a background thread (e.g.
+    a server request whose client disconnected) stop the sliding-window
+    pass between patches instead of paying for the whole page regardless."""
 
 
 def process_image(image, model_path, vspan, hspan):
@@ -36,15 +44,43 @@ def process_image(image, model_path, vspan, hspan):
     return output
 
 
-def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
+def process_image_msae(image, model_paths, w_height, w_width, mode='masks',
+                       resize_ratio=None, max_dimension=None, should_cancel=None,
+                       progress_callback=None):
     """
     Takes a document image and pre-trained SAE model paths
     and returns a single image with logical labels.
+
+    should_cancel, if given, is a zero-arg callable polled once per patch
+    (each row/col step of the sliding window below) -- if it ever returns
+    True, raises ClassificationCancelled immediately instead of finishing
+    the rest of the page. Optional and defaults to None (no polling, same
+    behavior as before this parameter existed) so every existing caller
+    keeps working unchanged.
+
+    progress_callback, if given, is called as progress_callback(row, total)
+    once per sliding-window row step (mirrors should_cancel's shape) --
+    `row` is exactly the pixel offset already printed below ("N / total"),
+    `total` is img_height_pad. Optional and defaults to None so every
+    existing caller keeps working unchanged. Lets a caller running this on
+    a server (paco-classifier-service) relay real progress to its own
+    caller instead of only the bare "N / total" console print this
+    function already did.
     """
 
     num_labels = len(model_paths)
     padding = 25
 
+    orig_height, orig_width = image.shape[:2]
+    scale_ratio = image_scaling.compute_scale_ratio(
+        orig_width, orig_height, w_height, w_width,
+        max_dimension=max_dimension, ratio=resize_ratio)
+    if scale_ratio < 1.0:
+        image = image_scaling.resize_image_down(image, scale_ratio)
+        print(f"Resizing input {orig_width}x{orig_height} -> "
+              f"{image.shape[1]}x{image.shape[0]} (ratio={scale_ratio:.4f}) "
+              f"before classification")
+        
     #Including padding at the edges due to the unreliability of the model's predictions along the borders.
     image_with_padding = cv2.copyMakeBorder(image, padding, padding, padding, padding, cv2.BORDER_REPLICATE)
     [img_height_pad, img_width_pad, channels_pad] = image_with_padding.shape
@@ -66,7 +102,11 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
 
     for row in range(0, img_height_pad, w_height-padding*2-1):
         print(str(row) + ' / ' + str(img_height_pad))
+        if progress_callback is not None:
+            progress_callback(row, img_height_pad)
         for col in range(0, img_width, w_width-padding*2-1):
+            if should_cancel is not None and should_cancel():
+                raise ClassificationCancelled()
 
             # Modifying the row and column indices to always cover the right and bottom borders of the image.
             row = min(row, img_height_pad-w_height)
@@ -101,5 +141,8 @@ def process_image_msae(image, model_paths, w_height, w_width, mode='masks'):
         output_images_no_pad = [output_image[padding:w_height-padding, padding:w_height-padding] for output_image in output_images]
         return output_images_no_pad
     elif mode == 'logical':
-        return output_image[padding:padding+img_height, padding:padding+img_width]
+        result = output_image[padding:padding+img_height, padding:padding+img_width]
+        if scale_ratio < 1.0:
+            result = image_scaling.restore_label_map(result, orig_width, orig_height)
+        return result
 

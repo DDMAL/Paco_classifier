@@ -129,6 +129,12 @@ dmypy.json
 .pyre/
 .DS_Store
 
+# Reference/original Calvos classifier data, output of models, things for testing
+Calvo_classifier_ref/
+inputtest/
+models/
+models_v2/
+.vscode/
 .idea
 
 .gitignore
