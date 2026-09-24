@@ -135,5 +135,7 @@ inputtest/
 models/
 models_v2/
 .vscode/
+.idea
 
 .gitignore
+

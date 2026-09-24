@@ -78,7 +78,7 @@ def get_sae(height, width, pretrained_weights=None):
     model = Model(inputs=inputs, outputs=conv10)
 
     model.compile(
-        optimizer=Adam(lr=1e-4), loss="binary_crossentropy", metrics=["accuracy"]
+        optimizer=Adam(learning_rate=1e-4), loss="binary_crossentropy", metrics=["accuracy"]
     )
 
     if pretrained_weights is not None:
